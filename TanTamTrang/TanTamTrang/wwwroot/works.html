@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TAN — Works</title>
+  <script>try{var d=document.documentElement;if(sessionStorage.getItem('hwTear')==='1'){d.classList.add('hw-tear-pending');sessionStorage.removeItem('hwTear');}if(sessionStorage.getItem('wcSplit')==='1'){d.classList.add('wc-split-pending');sessionStorage.removeItem('wcSplit');}if(sessionStorage.getItem('ptEnter')==='1'){d.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
+  <link rel="stylesheet" href="style.css?v=42">
+</head>
+<body class="works-page">
+
+<div class="page-transition" id="pageTransition" aria-hidden="true">
+  <div class="transition-frame transition-frame-1"></div>
+  <div class="transition-frame transition-frame-2"></div>
+  <div class="transition-frame transition-frame-3"></div>
+  <div class="transition-frame transition-frame-4"></div>
+  <div class="transition-frame transition-frame-5"></div>
+  <div class="transition-ui">
+    <span id="transitionFrom">CURRENT</span>
+    <span>→</span>
+    <span id="transitionTo">NEXT</span>
+  </div>
+</div>
+<div class="page-enter-curtain" id="pageEnterCurtain"></div>
+
+<!-- Home <-> Works transition -->
+<div class="hw-transition" id="hwTransition" aria-hidden="true">
+  <div class="hw-frame hw-frame-1"></div>
+  <div class="hw-frame hw-frame-2"></div>
+  <div class="hw-frame hw-frame-3"></div>
+  <div class="hw-frame hw-frame-4"></div>
+  <div class="hw-frame hw-frame-5"></div>
+  <div class="hw-black"></div>
+  <div class="hw-tear">
+    <div class="hw-tear-half hw-tear-left"></div>
+    <div class="hw-tear-half hw-tear-right"></div>
+    <div class="hw-tear-seam"></div>
+  </div>
+  <div class="transition-ui">
+    <span id="hwFrom">WORKS</span>
+    <span>→</span>
+    <span id="hwTo">HOME</span>
+  </div>
+</div>
+
+<!-- Works <-> Contact transition -->
+<div class="wc-transition" id="wcTransition" aria-hidden="true">
+  <div class="wc-frame wc-frame-1"></div>
+  <div class="wc-frame wc-frame-2"></div>
+  <div class="wc-frame wc-frame-3"></div>
+  <div class="wc-frame wc-frame-4"></div>
+  <div class="wc-frame wc-frame-5"></div>
+  <div class="wc-split">
+    <svg class="wc-split-svg" aria-hidden="true">
+      <defs>
+        <clipPath id="wcCurveTop" clipPathUnits="objectBoundingBox">
+          <path d="M0,0 L1,0 L1,0.52 C0.78,0.52 0.66,0.56 0.5,0.56 C0.34,0.56 0.22,0.52 0,0.52 Z"/>
+        </clipPath>
+        <clipPath id="wcCurveBottom" clipPathUnits="objectBoundingBox">
+          <path d="M0,1 L1,1 L1,0.48 C0.78,0.48 0.66,0.44 0.5,0.44 C0.34,0.44 0.22,0.48 0,0.48 Z"/>
+        </clipPath>
+      </defs>
+    </svg>
+    <div class="wc-split-half wc-split-top"></div>
+    <div class="wc-split-half wc-split-bottom"></div>
+    <div class="wc-split-seam"></div>
+  </div>
+  <div class="transition-ui">
+    <span id="wcFrom">WORKS</span>
+    <span>→</span>
+    <span id="wcTo">CONTACT</span>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand-static">TanTamTrang</div>
+  <nav class="topnav">
+    <a href="index.html">Home</a>
+    <a href="works.html" class="active">Works</a>
+    <a href="contact.html">Contact</a>
+    <a href="about.html">About</a>
+  </nav>
+</header>
+
+<main class="works-reel" id="worksReel">
+  <div class="reel-scene" id="reelScene" aria-hidden="true">
+    <div class="reel-ring" id="reelRing"></div>
+  </div>
+  <div class="reel-scroll-spacer" aria-hidden="true"></div>
+</main>
+
+<script src="script.js?v=42"></script>
+</body>
+</html>

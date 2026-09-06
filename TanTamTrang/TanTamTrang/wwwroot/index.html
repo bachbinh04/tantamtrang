@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TAN — Home</title>
+  <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
+  <link rel="stylesheet" href="style.css?v=42">
+</head>
+
+<body class="home-video-body">
+
+  <!-- Intro Preloader -->
+  <div id="camcorder-preloader">
+    <div class="camcorder-ui">
+      <h1 class="loading-title">TANTAMTRANG</h1>
+    </div>
+  </div>
+
+  <!-- 3D intro canvas -->
+  <div id="canvas-container">
+    <canvas id="webgl-canvas"></canvas>
+  </div>
+
+  <div class="page-transition" id="pageTransition" aria-hidden="true">
+    <div class="transition-frame transition-frame-1"></div>
+    <div class="transition-frame transition-frame-2"></div>
+    <div class="transition-frame transition-frame-3"></div>
+    <div class="transition-frame transition-frame-4"></div>
+    <div class="transition-frame transition-frame-5"></div>
+    <div class="transition-ui">
+      <span id="transitionFrom">CURRENT</span>
+      <span>→</span>
+      <span id="transitionTo">NEXT</span>
+    </div>
+  </div>
+  <div class="page-enter-curtain" id="pageEnterCurtain"></div>
+
+  <!-- Home <-> Works transition -->
+  <div class="hw-transition" id="hwTransition" aria-hidden="true">
+    <div class="hw-frame hw-frame-1"></div>
+    <div class="hw-frame hw-frame-2"></div>
+    <div class="hw-frame hw-frame-3"></div>
+    <div class="hw-frame hw-frame-4"></div>
+    <div class="hw-frame hw-frame-5"></div>
+    <div class="hw-black"></div>
+    <div class="transition-ui">
+      <span id="hwFrom">HOME</span>
+      <span>→</span>
+      <span id="hwTo">WORKS</span>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand-static">TanTamTrang</div>
+    <nav class="topnav">
+      <a href="index.html" class="active">Home</a>
+      <a href="works.html">Works</a>
+      <a href="contact.html">Contact</a>
+      <a href="about.html">About</a>
+    </nav>
+  </header>
+
+  <!-- Infinite video reel -->
+  <main class="home-reel" id="homeReel">
+    <div class="home-reel-stage" id="homeReelStage" aria-hidden="true">
+      <div class="home-slide">
+        <video class="home-video" src="images/bugs-home.mp4?s=2" muted loop autoplay playsinline preload="auto"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="images/city-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="images/fish-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="images/video-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="images/canyon-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video home-video-mono" src="images/mono-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="images/ember-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video home-video-mono" src="images/c-works.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+      </div>
+    </div>
+    <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
+  </main>
+
+  <!-- Libraries for the 3D intro -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <script src="script.js?v=42"></script>
+</body>
+
+</html>

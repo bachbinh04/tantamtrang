@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TAN — About</title>
+  <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
+  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="page-transition" id="pageTransition" aria-hidden="true">
+  <div class="transition-frame transition-frame-1"></div>
+  <div class="transition-frame transition-frame-2"></div>
+  <div class="transition-frame transition-frame-3"></div>
+  <div class="transition-frame transition-frame-4"></div>
+  <div class="transition-frame transition-frame-5"></div>
+  <div class="transition-ui">
+    <span id="transitionFrom">CURRENT</span>
+    <span>→</span>
+    <span id="transitionTo">NEXT</span>
+  </div>
+</div>
+<div class="page-enter-curtain" id="pageEnterCurtain"></div>
+
+  
+<header class="topbar">
+  <div class="brand-static">TanTamTrang</div>
+  <nav class="topnav">
+    <a href="index.html">Home</a>
+    <a href="works.html">Works</a>
+    <a href="contact.html">Contact</a>
+    <a href="about.html">About</a>
+  </nav>
+</header>
+
+  <main class="about-page">
+    <section class="about-stick">
+      <div class="about-copy left">
+        <div class="small" id="aboutCount">01 / 04</div>
+        <h2 id="leftTitle">VISUAL DESIGNER</h2>
+        <p id="leftBody">I build visual ideas through image-making, typography and atmosphere.</p>
+        <a href="#">VIEW / DOWNLOAD CV ↗</a>
+      </div>
+
+      <div class="cube-zone">
+        <div class="cube" id="aboutCube">
+          <div class="cube-face"><img src="images/about-user-01.png" alt="Portrait 1"></div>
+          <div class="cube-face"><img src="images/about-user-02.png" alt="Portrait 2"></div>
+          <div class="cube-face"><img src="images/about-user-03.png" alt="Portrait 3"></div>
+          <div class="cube-face"><img src="images/works-02.jpg" alt="Portrait 4"></div>
+        </div>
+      </div>
+
+      <div class="about-copy right">
+        <div class="small" id="rightLabel">FOCUS</div>
+        <h2 id="rightTitle">CONCEPT / IMAGE / DIRECTION</h2>
+        <p id="rightBody">Selected works, experiments and personal visual research.</p>
+      </div>
+
+      <div class="progress-rail">
+        <span class="progress-label">01</span>
+        <span class="progress-label">02</span>
+        <span class="progress-label">03</span>
+        <span class="progress-label">04</span>
+        <i class="progress-marker"></i>
+      </div>
+    </section>
+    <div class="about-cube-spacer" aria-hidden="true"></div>
+  </main>
+  <footer class="footer">
+    <span>© TAN 2026</span>
+    <a href="contact.html">Open Contact ↑</a>
+  </footer>
+  <script src="script.js?v=42"></script>
+</body>
+</html>
