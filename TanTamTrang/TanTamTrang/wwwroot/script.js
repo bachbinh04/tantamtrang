@@ -1036,8 +1036,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function layout() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const w = Math.min(vw * 0.36, 420);
-    const h = vh * 0.70;
+    // Phones get a wider, shorter card: 36% of a narrow viewport is a sliver
+    // that is hard to read and hard to tap. Desktop sizing is untouched.
+    const narrow = vw <= 700;
+    const w = narrow ? Math.min(vw * 0.58, 340) : Math.min(vw * 0.36, 420);
+    const h = narrow ? Math.min(vh * 0.58, 540) : vh * 0.70;
     const radius = (w / (2 * Math.tan(Math.PI / N))) * 1.22;   // bigger ring, still some spacing
     RADIUS = radius;
     FORWARD = radius * 0.72;   // brings the frontal work forward to screen centre
@@ -1203,62 +1206,149 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  // ---- drag-to-rotate (mouse only) ----
-  // Dragging left/right spins the same ring the scroll does, by driving the
-  // page's own scrollY — every existing behaviour (render, infinite loop,
-  // snap-to-centre) keeps working unmodified underneath it.
+  // ---- drag / swipe to rotate ----
+  // Mouse: press and drag left-right — unchanged from before.
+  // Touch: the gesture is axis-locked first. A mostly-vertical move is left to
+  // the page (scrolling spins the ring anyway); a mostly-horizontal one is taken
+  // over here. A quick flick carries on to the next work, and a finger that goes
+  // down and up without moving is a tap that opens the centred work.
   let dragging = false;
   let dragMoved = false;        // did this pointerdown->up turn into an actual drag?
   let dragStartX = 0;
+  let dragStartY = 0;
   let dragStartScroll = 0;
-  const DRAG_SENSITIVITY = 3;   // px of virtual scroll per px of horizontal drag
+  let touchGesture = false;     // this gesture came from a finger / pen
+  let axisPending = false;      // touch: still deciding horizontal vs vertical
+  let lastMoveX = 0;
+  let lastMoveT = 0;
+  let velocity = 0;             // smoothed horizontal px/ms
+  const DRAG_SENSITIVITY = 3;   // mouse: px of virtual scroll per px of drag
   const CLICK_SLOP = 6;         // px of movement still treated as a plain click
+  const AXIS_SLOP = 8;          // px before a touch gesture commits to an axis
+  const FLICK_VELOCITY = 0.35;  // px/ms that counts as a flick
 
-  function onPointerDown(e) {
-    if (e.pointerType && e.pointerType !== 'mouse') return;
-    if (e.button !== 0) return;
+  // on a phone a comfortable ~45%-of-screen swipe should travel one whole work
+  function touchSensitivity() {
+    const s = window.innerHeight / Math.max(1, window.innerWidth * 0.45);
+    return Math.max(2.5, Math.min(s, 8));
+  }
+
+  function openCentred() {
+    const w = WORKS[currentIdx];
+    if (w && w.link) window.location.href = w.link;
+  }
+
+  function beginDrag(e) {
     dragging = true;
-    dragMoved = false;
-    dragStartX = e.clientX;
     dragStartScroll = window.scrollY;
     cancelSnap();
     clearTimeout(snapTimer);
     reel.classList.add('is-dragging');
     if (reel.setPointerCapture) { try { reel.setPointerCapture(e.pointerId); } catch (err) {} }
+  }
+
+  function onPointerDown(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    touchGesture = e.pointerType === 'touch' || e.pointerType === 'pen';
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    lastMoveX = e.clientX;
+    lastMoveT = e.timeStamp || performance.now();
+    velocity = 0;
+    dragMoved = false;
+
+    if (touchGesture) {
+      // don't claim the gesture yet, and don't preventDefault — a vertical
+      // swipe has to stay a normal page scroll (touch-action: pan-y)
+      axisPending = true;
+      dragging = false;
+      dragStartScroll = window.scrollY;
+      return;
+    }
+
+    beginDrag(e);
     e.preventDefault();
   }
 
   function onPointerMove(e) {
-    if (!dragging) return;
+    if (!dragging && !axisPending) return;
     const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
     if (!Number.isFinite(dx)) return;
-    if (Math.abs(dx) > CLICK_SLOP) dragMoved = true;
-    const y = Math.max(0, dragStartScroll - dx * DRAG_SENSITIVITY);
+
+    if (axisPending) {
+      if (Math.abs(dy) > AXIS_SLOP && Math.abs(dy) >= Math.abs(dx)) {
+        axisPending = false;              // vertical — hand it back to the page
+        return;
+      }
+      if (Math.abs(dx) > AXIS_SLOP) {
+        axisPending = false;
+        dragStartX = e.clientX;           // re-baseline at the take-over point
+        dragMoved = true;                 // past the slop: this is a drag, not a tap
+        beginDrag(e);
+      } else {
+        return;                           // still undecided
+      }
+    }
+
+    const t = e.timeStamp || performance.now();
+    if (t > lastMoveT) {
+      const inst = (e.clientX - lastMoveX) / (t - lastMoveT);
+      velocity = velocity * 0.7 + inst * 0.3;
+      lastMoveX = e.clientX;
+      lastMoveT = t;
+    }
+
+    const moved = e.clientX - dragStartX;
+    if (Math.abs(moved) > CLICK_SLOP) dragMoved = true;
+    const sens = touchGesture ? touchSensitivity() : DRAG_SENSITIVITY;
+    const y = Math.max(0, dragStartScroll - moved * sens);
     programmaticY = Math.round(y);
     window.scrollTo({ top: y, left: 0, behavior: 'instant' });
-    e.preventDefault();
+    if (!touchGesture) e.preventDefault();
   }
 
   function onPointerUp() {
-    if (!dragging) return;
+    const wasPending = axisPending;
+    axisPending = false;
+
+    if (!dragging) {
+      // finger down and up on the reel without ever picking an axis = a tap
+      if (wasPending && touchGesture) openCentred();
+      return;
+    }
+
     dragging = false;
     reel.classList.remove('is-dragging');
 
     // a plain click (no real drag) on the frontal work opens its page, if it has one
-    if (!dragMoved) {
-      const w = WORKS[currentIdx];
-      if (w && w.link) {
-        window.location.href = w.link;
-        return;
-      }
+    if (!dragMoved) { openCentred(); return; }
+
+    // a quick flick keeps going instead of settling back to where it started
+    if (touchGesture && Math.abs(velocity) > FLICK_VELOCITY) {
+      const vh = window.innerHeight;
+      const fromIdx = Math.round(dragStartScroll / vh);
+      const dir = velocity < 0 ? 1 : -1;   // finger sweeps left -> next work
+      let target = Math.round(window.scrollY / vh);
+      target = dir > 0 ? Math.max(target, fromIdx + 1) : Math.min(target, fromIdx - 1);
+      animateScrollTo(target * vh, SNAP_DURATION);
+      return;
     }
+    snapToNearest();
+  }
+
+  function onPointerCancel() {
+    axisPending = false;
+    if (!dragging) return;
+    dragging = false;
+    reel.classList.remove('is-dragging');
     snapToNearest();
   }
 
   reel.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
-  window.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
 
   render();
 })();
