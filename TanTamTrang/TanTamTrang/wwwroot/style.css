@@ -316,7 +316,7 @@ html.lb-lock body{ overflow:hidden; }
   align-items:center;
   justify-content:center;
   background:rgba(7,7,7,0);
-  transition:background-color .46s ease, visibility 0s linear .46s;
+  transition:background-color .46s ease, visibility 0s linear .5s;
   visibility:hidden;
   pointer-events:none;
 }
@@ -863,16 +863,30 @@ html.lb-lock body{ overflow:hidden; }
        3:4 box would need, so the ratio never gets squashed either way */
     height:min(100%, calc(var(--cw) * 4 / 3));
     max-width:var(--cw);
-    /* stacked layout puts the copy directly above and below the cube, and the
-       rolling faces spill far outside their box (overflow is visible by
-       design on desktop, where they have empty side columns to spill into).
-       On a phone that spill lands on top of the copy and makes it unreadable,
-       so here the roll plays inside a clean window instead. */
-    overflow:hidden;
+    /* overflow stays visible, exactly like desktop: the faces folding away
+       above and below the front one IS the effect. The copy is kept readable
+       by its own scrim below, not by clipping the cube. */
     margin:0 auto;
     justify-self:center;
     align-self:center;
     order:2;
+  }
+  /* Stacked layout means the cube folds out over the copy above and below it.
+     Desktop has empty side columns to spill into; a phone does not. Rather
+     than clip the cube (which flattens the whole effect), lay a soft scrim of
+     the page colour behind each copy block so the text stays readable and the
+     roll still shows through around it. */
+  .about-copy{
+    isolation:isolate;
+  }
+  .about-copy::before{
+    content:"";
+    position:absolute;
+    inset:-12px -22px;
+    z-index:-1;
+    pointer-events:none;
+    background:radial-gradient(115% 130% at 50% 50%,
+      rgba(5,5,5,.94) 40%, rgba(5,5,5,.78) 68%, rgba(5,5,5,0) 100%);
   }
   .about-copy.left{
     order:1;

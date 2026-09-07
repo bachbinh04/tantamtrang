@@ -1698,13 +1698,44 @@ document.addEventListener('DOMContentLoaded', () => {
   let openFig = null;
   let busy = false;
 
-  // transform that maps the `to` box onto the `from` box (uniform scale by width)
-  function flipTo(from, to) {
-    const s = from.width / to.width;
-    const dx = (from.left + from.width / 2) - (to.left + to.width / 2);
-    const dy = (from.top + from.height / 2) - (to.top + to.height / 2);
-    return `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${s.toFixed(5)})`;
+  // Geometry for morphing the frame between its full-screen box and a grid slot.
+  // The two never share an aspect ratio — the frame matches the picture (3:2),
+  // the slot is a 4:3 (or 20:9 lead) cover-crop — so a single uniform scale can
+  // not land on the slot: it used to finish ~11% short in height, and ~48% off
+  // on the wide lead frame. That leftover gap is what you saw as a jolt the
+  // instant the real thumbnail took over.
+  //   frame -> scaled non-uniformly so it lands exactly ON the slot
+  //   picture inside -> given the inverse scale
+  // The two compose to exactly the uniform cover-scale the thumbnail itself
+  // uses, so nothing is stretched at either end and the hand-off is seamless.
+  function morph(fromRect, toRect) {
+    const sx = toRect.width / fromRect.width;
+    const sy = toRect.height / fromRect.height;
+    const dx = (toRect.left + toRect.width / 2) - (fromRect.left + fromRect.width / 2);
+    const dy = (toRect.top + toRect.height / 2) - (fromRect.top + fromRect.height / 2);
+    const cover = Math.max(sx, sy);
+    return {
+      frame: `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`,
+      img: `scale(${(cover / sx).toFixed(5)}, ${(cover / sy).toFixed(5)})`
+    };
   }
+
+  let anims = [];
+  function stopAnims() {
+    anims.forEach(a => { try { a.cancel(); } catch (e) {} });
+    anims = [];
+  }
+  function runMorph(fromTf, toTf) {
+    stopAnims();
+    frame.style.willChange = 'transform';
+    lbImg.style.willChange = 'transform';
+    const opts = { duration: DUR, easing: EASE, fill: 'forwards' };
+    const a1 = frame.animate([{ transform: fromTf.frame }, { transform: toTf.frame }], opts);
+    const a2 = lbImg.animate([{ transform: fromTf.img }, { transform: toTf.img }], opts);
+    anims = [a1, a2];
+    return a1;
+  }
+  const IDENTITY = { frame: 'none', img: 'none' };
 
   // fit the frame to the picture's largest box that fits inside the viewport
   // margins — so the enlarged image is never taller/wider than the screen
@@ -1729,24 +1760,25 @@ document.addEventListener('DOMContentLoaded', () => {
     openFig = fig;
 
     lbImg.src = thumb.currentSrc || thumb.src;
+    stopAnims();
     frame.style.transition = 'none';
     frame.style.transform = 'none';
+    lbImg.style.transform = 'none';
     lb.classList.add('is-on');
     lb.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('lb-lock');
 
     const play = () => {
       fitFrame();
-      const first = thumb.getBoundingClientRect();
-      const last = frame.getBoundingClientRect();
+      const full = frame.getBoundingClientRect();
+      const slot = thumb.getBoundingClientRect();
       fig.classList.add('is-open');                  // empty the grid slot
       frame.style.transformOrigin = 'center center';
-      frame.style.transition = 'none';
-      frame.style.transform = flipTo(first, last);   // invert: sit on the thumb
-      frame.getBoundingClientRect();                 // reflow
-      frame.style.transition = `transform ${DUR}ms ${EASE}`;
-      frame.style.transform = 'none';                // play: grow to full screen
-      setTimeout(() => { busy = false; }, DUR);
+      lbImg.style.transformOrigin = 'center center';
+      // start sitting exactly on the slot, play out to full screen
+      runMorph(morph(full, slot), IDENTITY).finished
+        .then(() => { frame.style.willChange = ''; lbImg.style.willChange = ''; busy = false; })
+        .catch(() => { busy = false; });
     };
 
     if (lbImg.complete && lbImg.naturalWidth) requestAnimationFrame(play);
@@ -1758,32 +1790,37 @@ document.addEventListener('DOMContentLoaded', () => {
     busy = true;
     const fig = openFig;
     const thumb = fig.querySelector('img');
-    const first = thumb.getBoundingClientRect();     // where that slot is right now
-    const last = frame.getBoundingClientRect();
+    const full = frame.getBoundingClientRect();
+    const slot = thumb.getBoundingClientRect();
 
-    frame.style.transition = `transform ${DUR}ms ${EASE}`;
-    frame.style.transform = flipTo(first, last);     // shrink back onto the slot
-    lb.classList.remove('is-on');                    // backdrop fades over its own transition
+    // shrink from full screen down onto the slot, landing on it exactly
+    const a = runMorph(IDENTITY, morph(full, slot));
+    lb.classList.remove('is-on');                    // backdrop + X fade alongside
 
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
-      frame.removeEventListener('transitionend', onEnd);
-      lb.setAttribute('aria-hidden', 'true');
-      frame.style.transition = 'none';
+      // Hand off in this order so nothing is ever visibly out of place:
+      // the frame is sitting pixel-exact on the slot, so putting the real
+      // thumbnail back and then emptying the frame is a pure content swap —
+      // no geometry moves. Only once it holds nothing do we reset it.
+      fig.classList.remove('is-open');
+      lbImg.removeAttribute('src');
+      stopAnims();
+      frame.style.willChange = '';
+      lbImg.style.willChange = '';
       frame.style.transform = 'none';
+      lbImg.style.transform = 'none';
       frame.style.width = '';
       frame.style.height = '';
-      lbImg.removeAttribute('src');
-      fig.classList.remove('is-open');
+      lb.setAttribute('aria-hidden', 'true');
       document.documentElement.classList.remove('lb-lock');
       openFig = null;
       busy = false;
     };
-    const onEnd = e => { if (e.propertyName === 'transform') finish(); };
-    frame.addEventListener('transitionend', onEnd);
-    setTimeout(finish, DUR + 90);                    // fallback
+    a.finished.then(finish).catch(finish);
+    setTimeout(finish, DUR + 120);                   // safety net
   }
 
   grid.addEventListener('click', e => {
@@ -1794,6 +1831,11 @@ document.addEventListener('DOMContentLoaded', () => {
   lb.addEventListener('click', e => { if (e.target === lb) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && openFig) close(); });
   window.addEventListener('resize', () => {
-    if (openFig && !busy) { frame.style.transition = 'none'; frame.style.transform = 'none'; fitFrame(); }
+    if (openFig && !busy) {
+      stopAnims();
+      frame.style.transform = 'none';
+      lbImg.style.transform = 'none';
+      fitFrame();
+    }
   });
 })();
