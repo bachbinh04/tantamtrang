@@ -1,0 +1,16 @@
+# build junk
+.vs/
+**/bin/
+**/obj/
+
+# local-only: raw masters & release upload staging (never deploy / never commit)
+/_source/
+/_release_media/
+
+# heavy media lives on GitHub Releases, not in the repo
+*.mp4
+*.mov
+*.MOV
+*.cr2
+*.CR2
+*.zip

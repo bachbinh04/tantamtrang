@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TAN — Home</title>
   <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
 </head>
 
 <body class="home-video-body">
@@ -62,32 +62,42 @@
     </nav>
   </header>
 
-  <!-- Infinite video reel -->
+  <!-- Infinite video reel — clips hosted as GitHub Release assets (CDN-backed,
+       not counted against Pages). Posters ship with the site so each slide
+       shows instantly while its clip streams in. -->
   <main class="home-reel" id="homeReel">
     <div class="home-reel-stage" id="homeReelStage" aria-hidden="true">
       <div class="home-slide">
-        <video class="home-video" src="images/bugs-home.mp4?s=2" muted loop autoplay playsinline preload="auto"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/bugs-home.mp4"
+               poster="images/poster/bugs-home.jpg" muted loop autoplay playsinline preload="metadata"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="images/city-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/city-home.mp4"
+               poster="images/poster/city-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="images/fish-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/fish-home.mp4"
+               poster="images/poster/fish-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="images/video-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/video-home.mp4"
+               poster="images/poster/video-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="images/canyon-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/canyon-home.mp4"
+               poster="images/poster/canyon-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video home-video-mono" src="images/mono-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/mono-home.mp4"
+               poster="images/poster/mono-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="images/ember-home.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/ember-home.mp4"
+               poster="images/poster/ember-home.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video home-video-mono" src="images/c-works.mp4?s=2" muted loop autoplay playsinline preload="metadata"></video>
+        <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/c-works.mp4"
+               poster="images/poster/c-works.jpg" muted loop autoplay playsinline preload="none"></video>
       </div>
     </div>
     <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
@@ -97,7 +107,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-  <script src="script.js?v=42"></script>
+  <script src="script.js?v=43"></script>
 </body>
 
 </html>

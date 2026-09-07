@@ -552,6 +552,20 @@ if (aboutPage) {
 const canvasContainer = document.getElementById('canvas-container');
 const webglCanvas = document.getElementById('webgl-canvas');
 
+/* Fail-safe: whatever happens to the intro (a texture 404, a slow CDN, a
+   blocked library, a stalled GSAP timeline), never let its opaque black
+   layers sit on top of the reel forever. If the intro hasn't taken itself
+   down within 7s, pull it down here. */
+setTimeout(() => {
+  const cc = document.getElementById('canvas-container');
+  if (cc && cc.style.display !== 'none' && !window.introFinished) {
+    cc.style.display = 'none';
+    if (window.animationFrameId) cancelAnimationFrame(window.animationFrameId);
+  }
+  const pre = document.getElementById('camcorder-preloader');
+  if (pre) pre.style.display = 'none';
+}, 7000);
+
 if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
   // 1. Setup Three.js Scene
   const scene = new THREE.Scene();
@@ -688,6 +702,7 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
               ease: "power2.out",
               onComplete: () => {
                 introFinished = true; // Ket thuc intro 3D
+                window.introFinished = true; // let the fail-safe know it's done
 
                 // Intro xong -> nhuong lai cho video reel dang chay ben duoi
                 canvasContainer.style.display = 'none';
