@@ -552,19 +552,29 @@ if (aboutPage) {
 const canvasContainer = document.getElementById('canvas-container');
 const webglCanvas = document.getElementById('webgl-canvas');
 
-/* Fail-safe: whatever happens to the intro (a texture 404, a slow CDN, a
-   blocked library, a stalled GSAP timeline), never let its opaque black
-   layers sit on top of the reel forever. If the intro hasn't taken itself
-   down within 7s, pull it down here. */
-setTimeout(() => {
-  const cc = document.getElementById('canvas-container');
-  if (cc && cc.style.display !== 'none' && !window.introFinished) {
-    cc.style.display = 'none';
-    if (window.animationFrameId) cancelAnimationFrame(window.animationFrameId);
-  }
-  const pre = document.getElementById('camcorder-preloader');
-  if (pre) pre.style.display = 'none';
-}, 7000);
+/* Fail-safe: whatever happens to the intro (a texture 404, a blocked
+   library, a stalled GSAP timeline), never let its opaque black layers
+   sit on top of the reel forever — but never pre-empt a healthy intro
+   either, so when we do step in we FADE, we don't cut.
+     - if the GSAP timeline never even started within 10s, the libs or
+       textures are dead: dismiss now.
+     - if it started but still hasn't finished after 20s, it's wedged:
+       dismiss then. A normal run (even a slow one) finishes well inside
+       that and clears these layers itself with its own 2s fade. */
+function dismissIntroLayers() {
+  if (window.introFinished) return;
+  window.introFinished = true;
+  [document.getElementById('canvas-container'),
+   document.getElementById('camcorder-preloader')].forEach((el) => {
+    if (!el || getComputedStyle(el).display === 'none') return;
+    el.style.transition = 'opacity .8s ease';
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; }, 850);
+  });
+  if (window.animationFrameId) cancelAnimationFrame(window.animationFrameId);
+}
+setTimeout(() => { if (!window.introStarted) dismissIntroLayers(); }, 10000);
+setTimeout(dismissIntroLayers, 20000);
 
 if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
   // 1. Setup Three.js Scene
@@ -660,6 +670,7 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
         if (loadedCount === totalImages) {
           const startIntro = () => {
+            window.introStarted = true; // tell the fail-safe the timeline is live
             const tl = gsap.timeline();
 
             // Tinh toan ty le phong to vua khit man hinh (dua tren FOV va khoang cach)
