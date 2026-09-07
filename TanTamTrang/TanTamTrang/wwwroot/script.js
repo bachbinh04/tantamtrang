@@ -71,16 +71,32 @@ if (aboutPage) {
   // The whole cube is then pushed forward by that same radius so the
   // frontal face sits exactly at the zone's natural (undistorted) plane.
   let radius = 0;
-  function layoutCube() {
+  let lastBoxW = 0, lastBoxH = 0;
+  // NEVER measure the cube itself. It carries the live rotateX()/translateZ(),
+  // so getBoundingClientRect() hands back the *projected* box (perspective
+  // scales it too), not the layout box. Feeding that back in as the radius
+  // makes the faces stop meeting at the edges and the cube visibly deforms.
+  // On a phone the URL bar fires resize over and over mid-scroll, so the
+  // error compounded on every one of them. The zone is untransformed.
+  function cubeBox() {
+    const zone = cube && cube.parentElement;
+    if (zone) { const r = zone.getBoundingClientRect(); if (r.height) return r; }
+    return { width: cube ? cube.offsetWidth : 0, height: cube ? cube.offsetHeight : 0 };
+  }
+  function layoutCube(force) {
     if (!cube) return;
-    radius = cube.getBoundingClientRect().height / 2;
+    const b = cubeBox();
+    if (!b.height) return;
+    // a URL-bar nudge that did not actually change the box is not a relayout
+    if (!force && Math.abs(b.width - lastBoxW) < 1 && Math.abs(b.height - lastBoxH) < 1) return;
+    lastBoxW = b.width; lastBoxH = b.height;
+    radius = b.height / 2;
     faces.forEach((f, i) => {
       f.dataset.baseTf = `rotateX(${(i * STEP_DEG).toFixed(2)}deg) translateZ(${(-radius).toFixed(1)}px)`;
       f.style.transform = f.dataset.baseTf;
     });
   }
-  layoutCube();
-  window.addEventListener('resize', layoutCube);
+  layoutCube(true);
 
   function updateText(i) {
     if (i === activeIndex) return;
@@ -106,7 +122,7 @@ if (aboutPage) {
   // whole turns (visually identical), so the position can be silently
   // re-centred near either end of the spacer for an endless roll.
   function maintainLoop() {
-    const vh = window.innerHeight;
+    const vh = viewH();
     const period = N_FACES * vh;
     const maxScroll = document.documentElement.scrollHeight - vh;
     const buffer = period * 1;
@@ -122,8 +138,21 @@ if (aboutPage) {
   let snapTimer = null;
   let snapRAF = null;
   let programmaticY = null;
-  const SNAP_DELAY = 70;
+  // A fling keeps firing scroll events with gaps in them; snapping after only
+  // 70ms would start while the momentum is still running and fight it, which
+  // is what made the roll judder on a phone. Wait longer on touch, and never
+  // snap while a finger is still down.
+  const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const SNAP_DELAY = COARSE ? 190 : 70;
   const SNAP_DURATION = 190;
+  let touchDown = false;
+  // The mobile URL bar changes innerHeight mid-scroll. Recomputing f = scrollY/vh
+  // against a viewport that just moved makes the roll jump a whole step, so hold
+  // the height steady while a scroll is in flight and re-sync once it settles.
+  let vhRef = window.innerHeight;
+  let lastVW = window.innerWidth;
+  let lastScrollT = 0;
+  const viewH = () => vhRef || window.innerHeight;
 
   function cancelSnap() {
     if (snapRAF) { cancelAnimationFrame(snapRAF); snapRAF = null; }
@@ -152,7 +181,8 @@ if (aboutPage) {
   // Once the user stops scrolling, roll the rest of the way so the nearest
   // face lands dead-on instead of stopping mid-roll.
   function snapToNearest() {
-    const vh = window.innerHeight;
+    if (touchDown) return;
+    const vh = viewH();
     const targetF = Math.round(window.scrollY / vh);
     animateScrollTo(targetF * vh, SNAP_DURATION);
   }
@@ -160,7 +190,7 @@ if (aboutPage) {
   function renderAbout() {
     ticking = false;
 
-    const vh = window.innerHeight;
+    const vh = viewH();
     const f = window.scrollY / vh;
     if (!Number.isFinite(f)) return;
 
@@ -179,8 +209,10 @@ if (aboutPage) {
 
     faces.forEach((f2, i) => {
       const d = circDist(f, i);
-      // dim faces as they roll away from front-facing
-      f2.style.filter = `brightness(${lerp(1, 0.45, clamp(d, 0, 1)).toFixed(2)})`;
+      // dim faces as they roll away from front-facing (skip identical writes —
+      // restyling a filter on a preserve-3d child is expensive on mobile)
+      const br = lerp(1, 0.45, clamp(d, 0, 1)).toFixed(2);
+      if (f2.dataset.br !== br) { f2.dataset.br = br; f2.style.filter = `brightness(${br})`; }
     });
 
     maintainLoop();
@@ -191,6 +223,8 @@ if (aboutPage) {
       window.requestAnimationFrame(renderAbout);
       ticking = true;
     }
+    lastScrollT = performance.now();
+    if (touchDown) return;               // let the fling finish on its own
     if (programmaticY === null || Math.abs(window.scrollY - programmaticY) > 2) {
       cancelSnap();
       clearTimeout(snapTimer);
@@ -199,7 +233,28 @@ if (aboutPage) {
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', () => { layoutCube(); renderAbout(); });
+  function onViewportChange() {
+    const w = window.innerWidth;
+    const scrolling = performance.now() - lastScrollT < 250;
+    // a real resize (rotation, window drag) resyncs the held height; a URL-bar
+    // nudge in the middle of a scroll does not
+    if (w !== lastVW || !scrolling) { lastVW = w; vhRef = window.innerHeight; }
+    layoutCube();
+    renderAbout();
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', () => {
+    lastVW = -1;
+    setTimeout(() => { onViewportChange(); layoutCube(true); renderAbout(); }, 120);
+  });
+  window.addEventListener('touchstart', () => {
+    touchDown = true; cancelSnap(); clearTimeout(snapTimer);
+  }, { passive: true });
+  window.addEventListener('touchend', () => {
+    touchDown = false; clearTimeout(snapTimer);
+    snapTimer = setTimeout(snapToNearest, SNAP_DELAY);
+  }, { passive: true });
+  window.addEventListener('touchcancel', () => { touchDown = false; }, { passive: true });
   renderAbout();
 }
 
@@ -266,15 +321,32 @@ if (aboutPage) {
   const circDist = (a, b) => { const d = Math.abs(a - b) % N_FACES; return d > N_FACES / 2 ? N_FACES - d : d; };
 
   let radius = 0;
-  function layoutCube() {
-    radius = cube.getBoundingClientRect().height / 2;
+  let lastBoxW = 0, lastBoxH = 0;
+  // NEVER measure the cube itself. It carries the live rotateX()/translateZ(),
+  // so getBoundingClientRect() hands back the *projected* box (perspective
+  // scales it too), not the layout box. Feeding that back in as the radius
+  // makes the faces stop meeting at the edges and the cube visibly deforms.
+  // On a phone the URL bar fires resize over and over mid-scroll, so the
+  // error compounded on every one of them. The zone is untransformed.
+  function cubeBox() {
+    const zone = cube && cube.parentElement;
+    if (zone) { const r = zone.getBoundingClientRect(); if (r.height) return r; }
+    return { width: cube ? cube.offsetWidth : 0, height: cube ? cube.offsetHeight : 0 };
+  }
+  function layoutCube(force) {
+    if (!cube) return;
+    const b = cubeBox();
+    if (!b.height) return;
+    // a URL-bar nudge that did not actually change the box is not a relayout
+    if (!force && Math.abs(b.width - lastBoxW) < 1 && Math.abs(b.height - lastBoxH) < 1) return;
+    lastBoxW = b.width; lastBoxH = b.height;
+    radius = b.height / 2;
     faces.forEach((f, i) => {
       f.dataset.baseTf = `rotateX(${(i * STEP_DEG).toFixed(2)}deg) translateZ(${(-radius).toFixed(1)}px)`;
       f.style.transform = f.dataset.baseTf;
     });
   }
-  layoutCube();
-  window.addEventListener('resize', layoutCube);
+  layoutCube(true);
 
   function updateText(i) {
     if (i === activeIndex) return;
@@ -293,7 +365,7 @@ if (aboutPage) {
   }
 
   function maintainLoop() {
-    const vh = window.innerHeight;
+    const vh = viewH();
     const period = N_FACES * vh;
     const maxScroll = document.documentElement.scrollHeight - vh;
     const buffer = period * 1;
@@ -309,8 +381,21 @@ if (aboutPage) {
   let snapTimer = null;
   let snapRAF = null;
   let programmaticY = null;
-  const SNAP_DELAY = 70;
+  // A fling keeps firing scroll events with gaps in them; snapping after only
+  // 70ms would start while the momentum is still running and fight it, which
+  // is what made the roll judder on a phone. Wait longer on touch, and never
+  // snap while a finger is still down.
+  const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const SNAP_DELAY = COARSE ? 190 : 70;
   const SNAP_DURATION = 190;
+  let touchDown = false;
+  // The mobile URL bar changes innerHeight mid-scroll. Recomputing f = scrollY/vh
+  // against a viewport that just moved makes the roll jump a whole step, so hold
+  // the height steady while a scroll is in flight and re-sync once it settles.
+  let vhRef = window.innerHeight;
+  let lastVW = window.innerWidth;
+  let lastScrollT = 0;
+  const viewH = () => vhRef || window.innerHeight;
 
   function cancelSnap() {
     if (snapRAF) { cancelAnimationFrame(snapRAF); snapRAF = null; }
@@ -337,14 +422,15 @@ if (aboutPage) {
   }
 
   function snapToNearest() {
-    const vh = window.innerHeight;
+    if (touchDown) return;
+    const vh = viewH();
     const targetF = Math.round(window.scrollY / vh);
     animateScrollTo(targetF * vh, SNAP_DURATION);
   }
 
   function renderPoster() {
     ticking = false;
-    const vh = window.innerHeight;
+    const vh = viewH();
     const f = window.scrollY / vh;
     if (!Number.isFinite(f)) return;
 
@@ -360,7 +446,8 @@ if (aboutPage) {
 
     faces.forEach((f2, i) => {
       const d = circDist(f, i);
-      f2.style.filter = `brightness(${lerp(1, 0.45, clamp(d, 0, 1)).toFixed(2)})`;
+      const br = lerp(1, 0.45, clamp(d, 0, 1)).toFixed(2);
+      if (f2.dataset.br !== br) { f2.dataset.br = br; f2.style.filter = `brightness(${br})`; }
     });
 
     maintainLoop();
@@ -371,6 +458,8 @@ if (aboutPage) {
       window.requestAnimationFrame(renderPoster);
       ticking = true;
     }
+    lastScrollT = performance.now();
+    if (touchDown) return;               // let the fling finish on its own
     if (programmaticY === null || Math.abs(window.scrollY - programmaticY) > 2) {
       cancelSnap();
       clearTimeout(snapTimer);
@@ -379,7 +468,28 @@ if (aboutPage) {
   }
 
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', () => { layoutCube(); renderPoster(); });
+  function onViewportChange() {
+    const w = window.innerWidth;
+    const scrolling = performance.now() - lastScrollT < 250;
+    // a real resize (rotation, window drag) resyncs the held height; a URL-bar
+    // nudge in the middle of a scroll does not
+    if (w !== lastVW || !scrolling) { lastVW = w; vhRef = window.innerHeight; }
+    layoutCube();
+    renderPoster();
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', () => {
+    lastVW = -1;
+    setTimeout(() => { onViewportChange(); layoutCube(true); renderPoster(); }, 120);
+  });
+  window.addEventListener('touchstart', () => {
+    touchDown = true; cancelSnap(); clearTimeout(snapTimer);
+  }, { passive: true });
+  window.addEventListener('touchend', () => {
+    touchDown = false; clearTimeout(snapTimer);
+    snapTimer = setTimeout(snapToNearest, SNAP_DELAY);
+  }, { passive: true });
+  window.addEventListener('touchcancel', () => { touchDown = false; }, { passive: true });
   renderPoster();
 })();
 
