@@ -90,6 +90,10 @@ if (aboutPage) {
     // a URL-bar nudge that did not actually change the box is not a relayout
     if (!force && Math.abs(b.width - lastBoxW) < 1 && Math.abs(b.height - lastBoxH) < 1) return;
     lastBoxW = b.width; lastBoxH = b.height;
+    // NOTE: the About roll is deliberately NOT a sealed prism — three panels
+    // at height/2 stand apart from each other, and that spacing is the look.
+    // (The poster roll below does use the true apothem: it has seven faces,
+    // which at this radius would cut through one another.)
     radius = b.height / 2;
     faces.forEach((f, i) => {
       f.dataset.baseTf = `rotateX(${(i * STEP_DEG).toFixed(2)}deg) translateZ(${(-radius).toFixed(1)}px)`;
@@ -308,6 +312,24 @@ if (aboutPage) {
       body:  'Paper-collage food poster — Saigon landmarks torn from old newsprint, gathered around a plate of broken rice.',
       tag:   'FOOD / COLLAGE',
       note:  'Newsprint, landmarks and a plate — the taste of a city.'
+    },
+    {
+      title: 'MADE IN VIETNAM',
+      body:  'Product poster — gold type on lacquer red, with two pairs of chopsticks standing in for the letters they interrupt.',
+      tag:   'PRODUCT / TYPOGRAPHY',
+      note:  'The hand completes the word — craft as the letterform.'
+    },
+    {
+      title: 'VÒNG XOÁY TUYỆT VỌNG',
+      body:  'Environmental poster — Vietnam held inside a blackened globe, bound in chain, one smokestack still running.',
+      tag:   'ENVIRONMENT / AWARENESS',
+      note:  'Two colours only: red for the warning, black for the cost.'
+    },
+    {
+      title: 'LOOKING',
+      body:  'Duotone type study — a kitten pushing out from behind oversized outlined letters, framed by heavy quote marks.',
+      tag:   'TYPE / DUOTONE',
+      note:  'Green on green, with the animal reading the line back at you.'
     }
   ];
 
@@ -340,7 +362,11 @@ if (aboutPage) {
     // a URL-bar nudge that did not actually change the box is not a relayout
     if (!force && Math.abs(b.width - lastBoxW) < 1 && Math.abs(b.height - lastBoxH) < 1) return;
     lastBoxW = b.width; lastBoxH = b.height;
-    radius = b.height / 2;
+    // Apothem of a regular N-sided prism whose faces are b.height tall.
+    // height/2 is only the answer for N = 4, where tan(45deg) = 1. With seven
+    // faces that radius is barely half what it needs to be and the panels
+    // drive straight through one another. Identical at four, correct at any.
+    radius = (b.height / 2) / Math.tan(Math.PI / N_FACES);
     faces.forEach((f, i) => {
       f.dataset.baseTf = `rotateX(${(i * STEP_DEG).toFixed(2)}deg) translateZ(${(-radius).toFixed(1)}px)`;
       f.style.transform = f.dataset.baseTf;
@@ -525,6 +551,7 @@ if (aboutPage) {
   let vh = window.innerHeight;
   let period = N * vh;         // scroll distance for one full cycle
   let ticking = false;
+  let carry = 0;               // sub-pixel glide the scroll position can't hold
 
   function sizeSpacer() {
     vh = window.innerHeight;
@@ -560,7 +587,11 @@ if (aboutPage) {
 
   function render() {
     ticking = false;
-    const y0 = window.scrollY;
+    // carry is the sub-pixel part of the glide the scroll position cannot
+    // hold (see glideTick). Folding it in here is what actually makes the
+    // motion smooth: transforms composite at sub-pixel precision, scroll
+    // offsets do not.
+    const y0 = window.scrollY + carry;
     for (let i = 0; i < N; i++) {
       let y = ((i * vh - y0) % period + period) % period;   // [0, period)
       if (y >= period - vh) y -= period;                     // -> [-vh, period - vh)
@@ -591,6 +622,7 @@ if (aboutPage) {
   // re-centre on a clean cycle boundary (one full-screen clip showing)
   function center() {
     sizeSpacer();
+    carry = 0;
     window.scrollTo({ top: period * MID, left: 0, behavior: 'instant' });
     render();
   }
@@ -609,17 +641,29 @@ if (aboutPage) {
      The reel glides on its own: ~one full-screen clip every SLIDE_MS.
      Any real input (wheel, touch, arrows) hands control back to the user;
      after RESUME_MS of stillness the glide picks up again. Delta-timed so
-     a hidden tab or a loop hop never causes a jump.                       */
+     a hidden tab or a loop hop never causes a jump.
+
+     It stays perfectly still until the intro is off the screen. The intro
+     ends by zooming bugs-home to full frame, and bugs-home is this reel's
+     first slide — so the reel must be parked on that same slide, motionless,
+     when the canvas dissolves away, or the illusion of one continuous shot
+     dies the instant the handover happens. Then it holds a beat longer, and
+     eases up to speed over RAMP_MS rather than snapping into motion.      */
   const SLIDE_MS = 8000;
   const RESUME_MS = 2600;
+  const HOLD_MS = 2000;        // stillness after the intro hands the frame over
+  const RAMP_MS = 1600;        // time to reach full pace from a standstill
   const reduceMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let glide = !reduceMotion;
+  let armed = false;           // intro is done and the hold has elapsed
+  let glide = !reduceMotion;   // the user has not taken over
+  let speed = 0;               // 0..1 of full pace
   let lastT = 0;
   let resumeTimer = 0;
 
   function pauseGlide() {
     glide = false;
+    speed = 0;                 // yield to the user at once — only the return eases
     if (resumeTimer) clearTimeout(resumeTimer);
     if (!reduceMotion) resumeTimer = setTimeout(() => { glide = true; }, RESUME_MS);
   }
@@ -633,13 +677,72 @@ if (aboutPage) {
   function glideTick(t) {
     const dt = lastT ? Math.min(t - lastT, 50) : 16;
     lastT = t;
-    if (glide && !document.hidden) {
-      window.scrollTo({ top: window.scrollY + (vh / SLIDE_MS) * dt, left: 0, behavior: 'instant' });
-      if (!ticking) { window.requestAnimationFrame(render); ticking = true; }
+    const want = armed && glide && !document.hidden;
+    if (!want) { carry = 0; window.requestAnimationFrame(glideTick); return; }
+
+    if (speed < 1) speed = Math.min(1, speed + dt / RAMP_MS);
+    // smoothstep: zero acceleration at both ends, so there is no kick as
+    // the reel leaves the standstill and none as it reaches full pace
+    const k = speed * speed * (3 - 2 * speed);
+
+    /* A document scroll offset is a whole number of pixels — scrollTo simply
+       refuses a fraction. Handing it scrollY + 1.14 every frame therefore
+       moved it 1px and binned the 0.14, which cost 12% of the pace and, far
+       worse, flattened the whole ramp: every step below 1px read as no
+       movement at all, so the reel sat still and then snapped straight to
+       full speed. So bank the fraction instead, spend it once it is worth a
+       whole pixel, and let render() draw the remainder as a transform. */
+    carry += (vh / SLIDE_MS) * dt * k;
+    const whole = Math.floor(carry);
+    if (whole >= 1) {
+      carry -= whole;
+      window.scrollTo({ top: window.scrollY + whole, left: 0, behavior: 'instant' });
     }
+    render();
     window.requestAnimationFrame(glideTick);
   }
   window.requestAnimationFrame(glideTick);
+
+  function armGlide() { armed = true; }
+
+  /* Wait for the intro to report in, then hold. If there is no intro on the
+     page at all (libraries blocked, a re-entry that skipped it) there is
+     nothing to wait for, and the hard stop guarantees the reel is never
+     left frozen because the intro failed to say it was done. */
+  const introLayer = document.getElementById('canvas-container');
+  if (!introLayer || getComputedStyle(introLayer).display === 'none') {
+    setTimeout(armGlide, HOLD_MS);
+  } else {
+    const waitIntro = setInterval(() => {
+      if (!window.introFinished) return;
+      clearInterval(waitIntro);
+      setTimeout(armGlide, HOLD_MS);
+    }, 120);
+    setTimeout(() => { clearInterval(waitIntro); armGlide(); }, 26000);
+  }
+
+  /* The intro's final act is bugs-home filling the frame, and slide 0 is
+     that same clip — so put the two on the same frame just before the
+     dissolve starts. Both crop it the same way (cover, centred), so once
+     the timecodes agree the cross-fade reads as one continuous shot
+     instead of a cut to another take. */
+  window.addEventListener('intro:handoff', (e) => {
+    center();                                  // park exactly on slide 0
+    const v = slides[0] && slides[0]._video;
+    const t = e.detail && e.detail.time;
+    if (!v || typeof t !== 'number' || !isFinite(t)) return;
+    if (v.readyState < 2 || !v.duration || t < 0 || t >= v.duration) return;
+    // Only jump to a point already downloaded: a seek that has to go and
+    // fetch would stall on a blank frame, which is far worse than being a
+    // couple of seconds out on a shot that looks the same either way.
+    let ready = false;
+    for (let i = 0; i < v.buffered.length; i++) {
+      if (t >= v.buffered.start(i) && t <= v.buffered.end(i) - 0.15) { ready = true; break; }
+    }
+    if (!ready) return;
+    if (Math.abs(v.currentTime - t) > 0.12) v.currentTime = t;
+    safePlay(v);
+  });
 
   center();
   // viewport height isn't final until layout settles — re-centre once it is
@@ -682,9 +785,25 @@ function dismissIntroLayers() {
     setTimeout(() => { el.style.display = 'none'; }, 850);
   });
   if (window.animationFrameId) cancelAnimationFrame(window.animationFrameId);
+  if (window.__introCleanup) window.__introCleanup();
 }
-setTimeout(() => { if (!window.introStarted) dismissIntroLayers(); }, 10000);
-setTimeout(dismissIntroLayers, 20000);
+/* In a background tab rAF is frozen, so GSAP never ticks and the timeline
+   genuinely cannot start — that is not a wedged intro, it is a visitor who
+   has not looked yet. Wait for them instead of burning the intro unseen. */
+(function armIntroFailSafe() {
+  setTimeout(() => {
+    if (window.introStarted || window.introFinished) return;
+    if (document.hidden) { armIntroFailSafe(); return; }
+    dismissIntroLayers();
+  }, 10000);
+})();
+(function armIntroHardStop() {
+  setTimeout(() => {
+    if (window.introFinished) return;
+    if (document.hidden) { armIntroHardStop(); return; }
+    dismissIntroLayers();
+  }, 20000);
+})();
 
 if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
   // 1. Setup Three.js Scene
@@ -702,21 +821,29 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  // 3. Create Cylindrical Image Carousel
-  const textureLoader = new THREE.TextureLoader();
-  const images = [
-    'images/transition-01.jpg',
-    'images/transition-02.jpg',
-    'images/transition-03.jpg',
-    'images/transition-04.png',
-    'images/transition-05.png',
-    'images/transition-06.png',
-    'images/transition-07.png',
-    'images/transition-08.png',
-    'images/transition-09.png',
+  // 3. Create the cylindrical carousel — every panel is a live video now.
+  //    bugs-home sits at index 0: it is the panel parked in front of the
+  //    camera on load, and the one that zooms out to fill the screen when
+  //    the spin ends, exactly as the still hero used to.
+  //
+  //    These clips are served from this site, NOT from the Release CDN the
+  //    reel below uses: release assets carry no Access-Control-Allow-Origin,
+  //    so WebGL would refuse them as a tainted texture. They are small on
+  //    purpose (~3 MB for all eight) because the intro is what the visitor
+  //    waits on — the full-quality versions still stream in underneath.
+  const MEDIA = [
+    { src: 'media/intro/bugs-home.mp4',   poster: 'images/poster/bugs-home.jpg' },  // hero
+    { src: 'media/intro/city-home.mp4',   poster: 'images/poster/city-home.jpg' },
+    { src: 'media/intro/fish-home.mp4',   poster: 'images/poster/fish-home.jpg' },
+    { src: 'media/intro/video-home.mp4',  poster: 'images/poster/video-home.jpg' },
+    { src: 'media/intro/canyon-home.mp4', poster: 'images/poster/canyon-home.jpg' },
+    { src: 'media/intro/mono-home.mp4',   poster: 'images/poster/mono-home.jpg' },
+    { src: 'media/intro/ember-home.mp4',  poster: 'images/poster/ember-home.jpg' },
+    { src: 'media/intro/c-works.mp4',     poster: 'images/poster/c-works.jpg' }
   ];
 
-  const totalImages = images.length;
+  const textureLoader = new THREE.TextureLoader();
+  const totalImages = MEDIA.length;
   // Tang radius de khoang cach giua cac hinh rong hon
   const radius = Math.max(15, totalImages * 3.5);
 
@@ -725,143 +852,224 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
   let introFinished = false; // Flag kiem soat hieu ung zoom dau trang
   const planes = [];
-  let loadedCount = 0;
+  const introVideos = [];
+  const introTextures = [];
 
   const loadingPct = document.getElementById('load-pct');
   const preloader = document.getElementById('camcorder-preloader');
 
-  images.forEach((imgUrl, index) => {
-    textureLoader.load(
-      imgUrl,
-      (texture) => {
-        texture.generateMipmaps = true;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
+  // Every clip is 1920x1080, so the panel size is known up front — no need to
+  // wait for a texture before the cylinder can exist. One shared geometry.
+  const panelH = radius * 0.45;
+  const panelW = panelH * (16 / 9);
+  const panelGeo = new THREE.PlaneGeometry(panelW, panelH, 1, 1);
 
-        // Calculate aspect ratio for the plane
-        const aspect = texture.image.width / texture.image.height;
-        // Giam chieu cao tuong doi de nhin thay tron ven buc hinh khong bi cat mep
-        const height = radius * 0.45;
-        const width = height * aspect;
+  // Off-screen but still laid out: display:none would let the browser suspend
+  // decoding, and a suspended video hands WebGL a frozen frame.
+  const videoHost = document.createElement('div');
+  videoHost.setAttribute('aria-hidden', 'true');
+  videoHost.style.cssText =
+    'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;' +
+    'opacity:0;pointer-events:none;z-index:-1';
+  document.body.appendChild(videoHost);
 
-        const geometry = new THREE.PlaneGeometry(width, height, 32, 32);
-        const material = new THREE.MeshBasicMaterial({
-          map: texture,
-          side: THREE.DoubleSide,
-          transparent: true
-        });
+  let readyCount = 0;
+  let launched = false;
+  let heroVideo = null;
+  // the intro clips were cut with -ss 0.5, so clip time + this = master time
+  const INTRO_CLIP_OFFSET = 0.5;
 
-        // Dam bao hinh chinh (index 0) luon hien thi de len cac hinh khac khi phong to
-        if (index === 0) {
-            material.depthTest = false;
-        }
+  MEDIA.forEach((item, index) => {
+    const material = new THREE.MeshBasicMaterial({
+      side: THREE.DoubleSide,
+      transparent: true
+    });
 
-        const plane = new THREE.Mesh(geometry, material);
+    // Dam bao hinh chinh (index 0) luon hien thi de len cac hinh khac khi phong to
+    if (index === 0) material.depthTest = false;
 
-        if (index === 0) {
-            plane.renderOrder = 10;
-        }
+    const plane = new THREE.Mesh(panelGeo, material);
+    if (index === 0) plane.renderOrder = 10;
 
-        // Cong them Math.PI de hinh dau tien nam ngay truoc mat Camera khi moi load
-        const angle = (index / totalImages) * Math.PI * 2 + Math.PI;
+    // Cong them Math.PI de hinh dau tien nam ngay truoc mat Camera khi moi load
+    const angle = (index / totalImages) * Math.PI * 2 + Math.PI;
+    plane.position.x = Math.sin(angle) * radius;
+    plane.position.z = Math.cos(angle) * radius;
+    // lookAt already aims the plane's front (+Z) straight at the camera in
+    // the middle. The extra 180deg turn this used to carry span it round to
+    // its BACK face, which side:DoubleSide rendered without complaint — as a
+    // horizontal mirror. Never showed on the abstract stills; obvious the
+    // moment real footage went on the panels.
+    plane.lookAt(0, 0, 0);
 
-        plane.position.x = Math.sin(angle) * radius;
-        plane.position.z = Math.cos(angle) * radius;
-        plane.lookAt(0, 0, 0); // Look at center
-        plane.rotation.y += Math.PI; // Flip to face camera
+    carouselGroup.add(plane);
+    planes[index] = plane;
 
-        carouselGroup.add(plane);
-        planes[index] = plane;
+    // Poster first so a panel is never an empty black rectangle, then the
+    // video takes the slot over the moment it has a decodable frame.
+    textureLoader.load(item.poster, (t) => {
+      if (material.userData.live) return;
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      material.map = t;
+      material.needsUpdate = true;
+      introTextures.push(t);
+    });
 
-        // Update preloader
-        loadedCount++;
-        if (loadingPct) {
-          loadingPct.innerText = Math.round((loadedCount / totalImages) * 100);
-        }
+    const video = document.createElement('video');
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('loop', '');
+    video.src = item.src;
+    videoHost.appendChild(video);
+    introVideos.push(video);
+    if (index === 0) heroVideo = video;
 
-        if (loadedCount === totalImages) {
-          const startIntro = () => {
-            window.introStarted = true; // tell the fail-safe the timeline is live
-            const tl = gsap.timeline();
+    let counted = false;
+    const countIn = () => {
+      if (counted) return;
+      counted = true;
+      readyCount++;
+      if (loadingPct) loadingPct.innerText = Math.round((readyCount / totalImages) * 100);
+      if (readyCount === totalImages) launch();
+    };
 
-            // Tinh toan ty le phong to vua khit man hinh (dua tren FOV va khoang cach)
-            const vFov = camera.fov * Math.PI / 180;
-            const visibleHeight = 2 * Math.tan(vFov / 2) * radius;
-            const visibleWidth = visibleHeight * camera.aspect;
-
-            const pW = planes[0].geometry.parameters.width;
-            const pH = planes[0].geometry.parameters.height;
-
-            const scaleY = visibleHeight / pH;
-            const scaleX = visibleWidth / pW;
-            const targetScale = Math.max(scaleX, scaleY) * 1.02; // Lay ty le lon hon va +2% bu goc canh
-
-            // 1. Xoay cuc nhanh 2 vong voi nhip do gat va dien anh hon (expo)
-            tl.to(carouselGroup.rotation, {
-              y: Math.PI * 4,
-              duration: 3.2,
-              ease: "expo.inOut"
-            });
-
-            // 2. Anticipation: Phong nho (co lai) nhe hon de lay da truoc khi no tung ra
-            tl.to(planes[0].scale, {
-              x: 0.9, y: 0.9, z: 0.9,
-              duration: 0.8,
-              ease: "power2.out"
-            }, "-=0.8");
-
-            // 3. Phong to manh me ra vua khit man hinh
-            tl.to(planes[0].scale, {
-              x: targetScale, y: targetScale, z: targetScale,
-              duration: 1.4,
-              ease: "power4.inOut"
-            });
-
-            // 4. Cho 0.1s roi fade out toan bo Canvas 3D (nen den) de lo dan video reel ben duoi
-            tl.to("#canvas-container", {
-              opacity: 0,
-              duration: 2,
-              ease: "power2.out",
-              onComplete: () => {
-                introFinished = true; // Ket thuc intro 3D
-                window.introFinished = true; // let the fail-safe know it's done
-
-                // Intro xong -> nhuong lai cho video reel dang chay ben duoi
-                canvasContainer.style.display = 'none';
-
-                // Huy 3D animation loop de tiet kiem tai nguyen
-                if (window.animationFrameId) {
-                  cancelAnimationFrame(window.animationFrameId);
-                }
-              }
-            }, "+=0.1");
-          };
-
-          if (preloader) {
-            gsap.to(preloader, {
-              opacity: 0,
-              duration: 1.5,
-              delay: 0.5,
-              ease: "power2.inOut",
-              onComplete: () => {
-                preloader.style.display = 'none';
-                startIntro();
-              }
-            });
-          } else {
-            startIntro();
-          }
-        }
-      },
-      undefined,
-      (err) => {
-        console.error("Error loading texture", imgUrl, err);
-        loadedCount++;
-        if (loadedCount === totalImages && preloader) {
-          preloader.style.display = 'none';
-        }
+    video.addEventListener('loadeddata', () => {
+      if (!material.userData.live) {
+        material.userData.live = true;
+        const vt = new THREE.VideoTexture(video);
+        vt.minFilter = THREE.LinearFilter;   // video frames are NPOT: no mipmaps
+        vt.magFilter = THREE.LinearFilter;
+        vt.generateMipmaps = false;
+        vt.wrapS = vt.wrapT = THREE.ClampToEdgeWrapping;
+        material.map = vt;
+        material.needsUpdate = true;
+        introTextures.push(vt);
       }
-    );
+      video.play().catch(() => {});
+      countIn();
+    }, { once: true });
+
+    // A dead clip must not hold the door shut — the poster carries that panel.
+    video.addEventListener('error', countIn, { once: true });
+    video.load();
   });
+
+  // Free the decoders the moment the intro is done: the reel underneath has
+  // eight videos of its own and does not need to share the GPU with these.
+  window.__introCleanup = function () {
+    introVideos.forEach((v) => {
+      try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
+    });
+    introVideos.length = 0;
+    introTextures.forEach((t) => { try { t.dispose(); } catch (e) {} });
+    introTextures.length = 0;
+    if (videoHost.parentNode) videoHost.parentNode.removeChild(videoHost);
+  };
+
+  function launch() {
+    if (launched) return;
+    launched = true;
+
+    const startIntro = () => {
+      window.introStarted = true; // tell the fail-safe the timeline is live
+      const tl = gsap.timeline();
+
+      // Tinh toan ty le phong to vua khit man hinh (dua tren FOV va khoang cach)
+      const vFov = camera.fov * Math.PI / 180;
+      const visibleHeight = 2 * Math.tan(vFov / 2) * radius;
+      const visibleWidth = visibleHeight * camera.aspect;
+
+      const pW = panelW;
+      const pH = panelH;
+
+      const scaleY = visibleHeight / pH;
+      const scaleX = visibleWidth / pW;
+      const targetScale = Math.max(scaleX, scaleY) * 1.02; // Lay ty le lon hon va +2% bu goc canh
+
+      // 1. Xoay cuc nhanh 2 vong voi nhip do gat va dien anh hon (expo)
+      tl.to(carouselGroup.rotation, {
+        y: Math.PI * 4,
+        duration: 3.2,
+        ease: "expo.inOut"
+      });
+
+      // 2. Anticipation: Phong nho (co lai) nhe hon de lay da truoc khi no tung ra
+      tl.to(planes[0].scale, {
+        x: 0.9, y: 0.9, z: 0.9,
+        duration: 0.8,
+        ease: "power2.out"
+      }, "-=0.8");
+
+      // 3. Phong to manh me ra vua khit man hinh
+      tl.to(planes[0].scale, {
+        x: targetScale, y: targetScale, z: targetScale,
+        duration: 1.4,
+        ease: "power4.inOut"
+      });
+
+      // 3b. Lift the fog off the hero as it fills the frame, so the clip lands
+      //     at full brightness instead of half-swallowed by the cylinder haze.
+      tl.to(scene.fog, {
+        density: 0,
+        duration: 1.4,
+        ease: "power2.inOut"
+      }, "<");
+
+      // 4. Cho 0.1s roi fade out toan bo Canvas 3D (nen den) de lo dan video reel ben duoi
+      tl.to("#canvas-container", {
+        opacity: 0,
+        duration: 2,
+        ease: "power2.out",
+        onStart: () => {
+          // Tell the reel underneath which frame of bugs-home we are holding,
+          // so its own copy can line up before this canvas dissolves away.
+          window.dispatchEvent(new CustomEvent('intro:handoff', {
+            detail: {
+              time: heroVideo && isFinite(heroVideo.currentTime)
+                ? heroVideo.currentTime + INTRO_CLIP_OFFSET : null
+            }
+          }));
+        },
+        onComplete: () => {
+          introFinished = true; // Ket thuc intro 3D
+          window.introFinished = true; // let the fail-safe know it's done
+
+          // Intro xong -> nhuong lai cho video reel dang chay ben duoi
+          canvasContainer.style.display = 'none';
+
+          // Huy 3D animation loop de tiet kiem tai nguyen
+          if (window.animationFrameId) {
+            cancelAnimationFrame(window.animationFrameId);
+          }
+          if (window.__introCleanup) window.__introCleanup();
+        }
+      }, "+=0.1");
+    };
+
+    if (preloader) {
+      gsap.to(preloader, {
+        opacity: 0,
+        duration: 1.5,
+        delay: 0.5,
+        ease: "power2.inOut",
+        onComplete: () => {
+          preloader.style.display = 'none';
+          startIntro();
+        }
+      });
+    } else {
+      startIntro();
+    }
+  }
+
+  // Never let one slow clip keep the visitor on the loading title: whatever
+  // has arrived by now goes on stage, the rest keep their posters.
+  setTimeout(launch, 6000);
 
   // Floating animation
   const clock = new THREE.Clock();
@@ -1110,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Night Mirror',     role: 'Self Portrait',  img: 'images/about-user-01.png', caption: 'Poster', link: 'poster.html' },
     { name: 'Fogged Glass',     role: 'Photography',    img: 'images/about-user-02.png', caption: 'Typography', link: 'typography.html' },
     { name: 'Thermal Study',    role: 'Experiment',     img: 'images/about-user-03.png', caption: 'Calendar', link: 'calendar.html' },
-    { name: 'Transition Field', role: 'Motion / Still', img: 'images/transition-05.jpg', caption: 'Visual Art' }
+    { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html' }
   ];
   const N = WORKS.length;
   const STEP_DEG = 360 / N;
