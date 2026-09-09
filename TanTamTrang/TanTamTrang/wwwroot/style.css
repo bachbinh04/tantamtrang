@@ -776,15 +776,18 @@ html.lb-lock body{ overflow:hidden; }
   color:#666;
   transform:translateY(-50%);
 }
-.progress-label:nth-child(1){top:0}
-.progress-label:nth-child(2){top:33.33%}
-.progress-label:nth-child(3){top:66.67%}
-.progress-label:nth-child(4){top:100%}
+/* No nth-child ladder here any more: it only ever positioned four labels, so
+   a fifth poster fell to top:auto and stacked on the first. buildRail() sets
+   each label's top from the real face count instead. */
 .progress-marker{
   position:absolute;
   right:7px;top:0;
   width:10px;height:1px;background:#fff;
-  transition:top .18s linear;
+  /* No transition: the marker is redrawn every frame from the scroll
+     position, exactly like the cube, which carries no transition either.
+     A 180ms ease on a per-frame property only makes the marker trail the
+     face it is reporting (measured 200px behind on a one-face jump), and
+     at the wrap it would rewind the full length of the rail. */
 }
 .text-fade-out{
   opacity:0!important;

@@ -9,6 +9,34 @@ function setActiveNav() {
 }
 setActiveNav();
 
+/* Vertical face counter on the About and Poster pages.
+   The rail draws a LOOP, not a line: face N-1 is followed by face 0, so the
+   scale it stands for is one whole revolution and the divisor is N, not N-1.
+   Dividing by N-1 pinned the last label to 100% — the very same point as 01
+   at 0% — and then let the marker run 1/(N-1) of the rail PAST the bottom
+   before it wrapped: 66px into empty space with seven faces, 132px with four.
+   With N the marker stays inside [0,100%) on its own and 100% IS 0%, so the
+   wrap needs no special case.
+   The labels are built from the faces instead of being typed into the page,
+   so the rail can no longer disagree with the cube about how many there are —
+   poster.html had grown to seven faces while the stylesheet still positioned
+   four, and 05, 06 and 07 had no `top` at all and piled up on top of 01. */
+function buildRail(rail, n) {
+  if (!rail) return null;
+  const marker = rail.querySelector('.progress-marker');
+  rail.querySelectorAll('.progress-label').forEach((el) => el.remove());
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('span');
+    s.className = 'progress-label';
+    s.textContent = String(i + 1).padStart(2, '0');
+    s.style.top = (i / n * 100).toFixed(3) + '%';
+    frag.appendChild(s);
+  }
+  rail.insertBefore(frag, marker);   // marker stays last so it paints on top
+  return marker;
+}
+
 const aboutPage = document.querySelector('.about-page');
 if (aboutPage) {
   const cube = document.getElementById('aboutCube');
@@ -19,10 +47,9 @@ if (aboutPage) {
   const rightTitle = document.getElementById('rightTitle');
   const rightBody = document.getElementById('rightBody');
   const count = document.getElementById('aboutCount');
-  const marker = document.querySelector('.progress-marker');
+  const marker = buildRail(document.querySelector('.progress-rail'), faces.length);
 
   const N_FACES = faces.length;
-  const STEPS = N_FACES - 1;   // number of scroll transitions
 
   const slides = [
     {
@@ -204,7 +231,7 @@ if (aboutPage) {
     if (marker) {
       let cyclePos = f % N_FACES;
       if (cyclePos < 0) cyclePos += N_FACES;
-      marker.style.top = `${(cyclePos / STEPS * 100).toFixed(2)}%`;
+      marker.style.top = `${(cyclePos / N_FACES * 100).toFixed(2)}%`;
     }
 
     if (cube) {
@@ -282,11 +309,10 @@ if (aboutPage) {
   const elTag   = document.getElementById('pcTag');
   const elNote  = document.getElementById('pcNote');
   const elCount = document.getElementById('pcCount');
-  const marker  = page.querySelector('.progress-marker');
   if (!cube || faces.length < 3) return;
 
+  const marker  = buildRail(page.querySelector('.progress-rail'), faces.length);
   const N_FACES = faces.length;
-  const STEPS = N_FACES - 1;
 
   const slides = [
     {
@@ -465,7 +491,7 @@ if (aboutPage) {
     if (marker) {
       let cyclePos = f % N_FACES;
       if (cyclePos < 0) cyclePos += N_FACES;
-      marker.style.top = `${(cyclePos / STEPS * 100).toFixed(2)}%`;
+      marker.style.top = `${(cyclePos / N_FACES * 100).toFixed(2)}%`;
     }
 
     cube.style.transform = `translateZ(${radius.toFixed(1)}px) rotateX(${(-f * STEP_DEG).toFixed(2)}deg)`;
