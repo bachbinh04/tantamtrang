@@ -37,6 +37,26 @@ function buildRail(rail, n) {
   return marker;
 }
 
+/* Headroom for the endless roll.
+   maintainLoop() fakes an infinite scroll by silently jumping the scroll
+   position two revolutions back whenever it comes within one revolution of
+   either end of the spacer — and it refuses to do that unless the spacer is
+   worth at least five revolutions, because with less there is nowhere safe to
+   land. One revolution is `count` viewport-heights, so the height the spacer
+   needs is a function of how many items are on the roll.
+   It used to be a constant per page with the count of the day baked into it
+   (24 viewport-heights for a four-face cube, 42 for a seven-work reel). Going
+   from four posters to seven raised the requirement from 20 to 35 while the
+   spacer stayed at 24, so the loop quietly switched itself off — no error, the
+   scroll just ran to the bottom and stopped dead on the third poster.
+   Derive it from the real count instead. Still expressed in vh, so it keeps
+   following the viewport on resize exactly as the constant did. */
+const SPACER_LOOPS = 8;             // revolutions of headroom; maintainLoop needs 5
+function sizeLoopSpacer(spacer, count) {
+  if (!spacer || !count) return;
+  spacer.style.height = (count * SPACER_LOOPS * 100) + 'vh';
+}
+
 const aboutPage = document.querySelector('.about-page');
 if (aboutPage) {
   const cube = document.getElementById('aboutCube');
@@ -48,6 +68,7 @@ if (aboutPage) {
   const rightBody = document.getElementById('rightBody');
   const count = document.getElementById('aboutCount');
   const marker = buildRail(document.querySelector('.progress-rail'), faces.length);
+  sizeLoopSpacer(document.querySelector('.about-cube-spacer'), faces.length);
 
   const N_FACES = faces.length;
 
@@ -312,6 +333,7 @@ if (aboutPage) {
   if (!cube || faces.length < 3) return;
 
   const marker  = buildRail(page.querySelector('.progress-rail'), faces.length);
+  sizeLoopSpacer(page.querySelector('.about-cube-spacer'), faces.length);
   const N_FACES = faces.length;
 
   const slides = [
@@ -1347,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html' }
   ];
   const N = WORKS.length;
+  sizeLoopSpacer(reel.querySelector('.reel-scroll-spacer'), N);
   const STEP_DEG = 360 / N;
 
   const lerp = (a, b, t) => a + (b - a) * t;

@@ -657,9 +657,10 @@ html.lb-lock body{ overflow:hidden; }
   padding:110px 64px 40px;
   z-index:2;
 }
-/* tall enough to hold several full loops of the 4-face cube so the JS can
-   silently re-centre the scroll position near either end and the roll
-   loops endlessly in both directions, matching the Works reel. */
+/* Fallback only — sizeLoopSpacer() overwrites this with a height derived from
+   the real face count as soon as the script runs. Hard-coding it here is what
+   broke the endless roll when the poster cube grew from four faces to seven:
+   the spacer stayed 24 viewport-heights while the loop started needing 35. */
 .about-cube-spacer{
   height:2400vh;
   width:1px;
@@ -1775,9 +1776,9 @@ body.home-video-body::-webkit-scrollbar{
   cursor:pointer;
 }
 .reel-scroll-spacer{
-  /* tall enough to hold several full 360° turns (7 works x 100vh each)
-     so the JS can silently re-centre the scroll position near either
-     end and the cylinder loops endlessly in both directions. */
+  /* Fallback only — sizeLoopSpacer() sets the real height from WORKS.length.
+     At seven works this constant left just six viewport-heights of slack, so
+     a ninth work would have killed the loop the same way it died on Poster. */
   height:4200vh;
   width:1px;
   pointer-events:none;
