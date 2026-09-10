@@ -1359,16 +1359,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const ring = document.getElementById('reelRing');
   if (!ring) return;
 
+  /* `desc` and `tags` are the two lines under the title and the three words in
+     the corner of a resting frame. They are copy, not structure - written to
+     fit the layout, and meant to be replaced with the real words. */
   const WORKS = [
-    { name: 'Arachnid',         role: 'Photography',   img: 'images/spider-bw.jpg', caption: 'Experience Design' },
-    { name: 'Jurassic Era',     role: 'Exhibition',     img: 'images/dino-01.jpg', caption: '3D/Video' },
-    { name: 'Fossil Structure', role: 'Visual Study',   img: 'images/dino-02.jpg', caption: 'Photography', link: 'photography.html' },
-    { name: 'Night Mirror',     role: 'Self Portrait',  img: 'images/about-user-01.png', caption: 'Poster', link: 'poster.html' },
-    { name: 'Fogged Glass',     role: 'Photography',    img: 'images/about-user-02.png', caption: 'Typography', link: 'typography.html' },
-    { name: 'Thermal Study',    role: 'Experiment',     img: 'images/about-user-03.png', caption: 'Calendar', link: 'calendar.html' },
-    { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html' }
+    { name: 'Arachnid',         role: 'Photography',      img: 'images/spider-bw.jpg',      caption: 'Experience Design',
+      desc: 'Interaction studies', years: '2024 — 2026', tags: ['Interactions', 'Products', 'And ideas'] },
+    { name: 'Jurassic Era',     role: 'Exhibition',       img: 'images/dino-01.jpg',        caption: '3D/Video',
+      desc: 'Motion and volume',   years: '2024 — 2026', tags: ['Frames', 'Depth', 'Movement'] },
+    { name: 'Fossil Structure', role: 'Visual Study',     img: 'images/dino-02.jpg',        caption: 'Photography', link: 'photography.html',
+      desc: 'Thirty-four frames',  years: '2024 — 2026', tags: ['Moments', 'Perspectives', 'Stories'] },
+    { name: 'Night Mirror',     role: 'Self Portrait',    img: 'images/about-user-01.png',  caption: 'Poster', link: 'poster.html',
+      desc: 'Visual experiments',  years: '2024 — 2026', tags: ['Paper', 'Type', 'Colour'] },
+    { name: 'Fogged Glass',     role: 'Photography',      img: 'images/about-user-02.png',  caption: 'Typography', link: 'typography.html',
+      desc: 'Letterform studies',  years: '2024 — 2026', tags: ['Letters', 'Layouts', 'Expressions'] },
+    { name: 'Thermal Study',    role: 'Experiment',       img: 'images/about-user-03.png',  caption: 'Calendar', link: 'calendar.html',
+      desc: 'Twelve months',       years: '2024 — 2026', tags: ['Days', 'Grids', 'Seasons'] },
+    { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html',
+      desc: 'Drawn and vectored',  years: '2024 — 2026', tags: ['Pixels', 'Brushes', 'Worlds'] }
   ];
   const N = WORKS.length;
+  const totalWorks = N;
   sizeLoopSpacer(reel.querySelector('.reel-scroll-spacer'), N);
   const STEP_DEG = 360 / N;
 
@@ -1376,41 +1387,510 @@ document.addEventListener('DOMContentLoaded', () => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const norm180 = (deg) => ((deg + 180) % 360 + 360) % 360 - 180;
 
+  /* Frame / surface / title are three separate layers on purpose.
+     .reel-card       is the frame: it owns the border and clips its children,
+                      and nothing is ever allowed to move it.
+     .reel-card-water is the surface the pointer disturbs - one canvas for the
+                      whole reel, not one per frame (see below).
+     .reel-card-body  holds every word on the frame and is the one element
+                      the cursor zooms and leans, so the number, the title and
+                      the footer row can never fall out of step.
+     The frames carry no photograph: each is a flat panel behind a white
+     hairline, and what appears inside is the water the cursor stirs up plus
+     the writing. WORKS still carries its `img` paths so the
+     pictures can be put back in one line, but nothing requests them now - no
+     image element is built at all, so the reel downloads nothing. */
+  /* Numbering starts on the work the reel opens centred on and counts to the
+     right from there, so the frame you land on is 01. Derived from the same
+     lookup that decides where the reel starts (see FEATURED_IDX below), so the
+     two can never drift apart and start the count on a different frame than
+     the one on screen. */
+  const NUM_START = Math.max(0, WORKS.findIndex((w) => w.name === 'Night Mirror'));
+
   const cards = [];
-  const captions = [];
-  WORKS.forEach((w) => {
+  WORKS.forEach((w, wi) => {
     const c = document.createElement('div');
     c.className = 'reel-card';
-    c.innerHTML = '<img src="' + w.img + '" alt="' + w.name + '" loading="lazy" draggable="false">';
+
+    if (w.caption) {
+      /* Everything written on a frame lives in one element, and that one
+         element is what zooms and leans under the cursor. Number, title and
+         footer therefore cannot drift out of step with each other: it is not
+         three effects kept in sync, it is one transform. */
+      const body = document.createElement('div');
+      body.className = 'reel-card-body';
+
+      const n = (((wi - NUM_START) % totalWorks) + totalWorks) % totalWorks + 1;
+      const num = document.createElement('div');
+      num.className = 'wk-num';
+      num.innerHTML = '<b></b><span></span>';
+      num.firstChild.textContent = String(n).padStart(2, '0');
+      num.lastChild.textContent = ' / ' + String(totalWorks).padStart(2, '0');
+      body.appendChild(num);
+
+      const mid = document.createElement('div');
+      mid.className = 'wk-mid';
+      const title = document.createElement('h2');
+      title.className = 'wk-title';
+      title.textContent = w.caption;
+      mid.appendChild(title);
+      const rule = document.createElement('span');
+      rule.className = 'wk-rule';
+      mid.appendChild(rule);
+      const desc = document.createElement('p');
+      desc.className = 'wk-desc';
+      desc.appendChild(document.createTextNode(w.desc || ''));
+      desc.appendChild(document.createElement('br'));
+      desc.appendChild(document.createTextNode(w.years || ''));
+      mid.appendChild(desc);
+      body.appendChild(mid);
+
+      // The three words a resting frame shows, and the row the centred one
+      // shows instead. Both are always in the DOM and cross-fade, so a frame
+      // arriving at the centre trades one for the other rather than popping.
+      const tags = document.createElement('p');
+      tags.className = 'wk-tags';
+      (w.tags || []).forEach((t, ti) => {
+        if (ti) tags.appendChild(document.createElement('br'));
+        tags.appendChild(document.createTextNode(t));
+      });
+      body.appendChild(tags);
+
+      const ex = document.createElement('div');
+      ex.className = 'wk-explore';
+      const exLabel = document.createElement('span');
+      exLabel.textContent = w.link ? 'Explore' : 'In progress';
+      ex.appendChild(exLabel);
+      ex.insertAdjacentHTML('beforeend',
+        '<svg class="wk-arrow" viewBox="0 0 46 8" aria-hidden="true">' +
+        '<path d="M0 4h42M38 1l4 3-4 3"/></svg>');
+      body.appendChild(ex);
+
+      c.appendChild(body);
+    }
+
     ring.appendChild(c);
     cards.push(c);
-
-    let cap = null;
-    if (w.caption) {
-      cap = document.createElement('div');
-      cap.className = 'reel-card-caption';
-      cap.textContent = w.caption;
-      ring.appendChild(cap);
-    }
-    captions.push(cap);
   });
+
+  /* ---- the water ---------------------------------------------------------
+     A height field, not a picture: every cell is pulled towards the average
+     of its four neighbours and away from where it was a tick ago, which is
+     the wave equation written out one cell at a time. The border row and
+     column are never written, so they stand as walls and the rings bounce
+     back off the inside of the frame the way they do in a tray.
+
+     Three things keep it cheap:
+       - ONE canvas for the whole reel, moved into whichever frame is frontal.
+         Seven surfaces would be seven of everything for six frames nobody can
+         reach.
+       - The loop is not permanent. A splash starts it; it stops itself once
+         the surface goes flat again, and clears the canvas on the way out.
+       - Nothing is ever measured. The pointer arrives with offsetX/offsetY,
+         which the browser has already mapped through the frame's own 3D
+         transform, so the ripple lands under the cursor without a single
+         getBoundingClientRect().
+     The grid is small on purpose - it is stretched over the frame by CSS, and
+     the upscale is what makes the rings read as soft water rather than pixels. */
+  const hoverFX = !!(window.matchMedia &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* Read once, never per frame. offsetX/offsetY arrive relative to the frame's
+     PADDING box, so the border has to come off the card size before the
+     pointer can be turned into a grid coordinate - otherwise thickening the
+     border quietly shifts every ripple away from the cursor. */
+  const FRAME_BORDER = cards.length
+    ? (parseFloat(window.getComputedStyle(cards[0]).borderTopWidth) || 0) : 0;
+
+  const WATER_COLS = 116;
+  const WATER_DAMP = 0.990;   // how fast the surface settles
+  /* Two different things make the surface "calm", and they pull apart:
+     WATER_DAMP and the stroke power decide how violently it moves, the gain
+     only decides how brightly the result is drawn. Dropping the power is what
+     took the chop out; dropping the gain as well just made the ripples
+     disappear. So the disturbance stays small and the gain carries it back up
+     to something you can actually see. */
+  const WATER_GAIN = 150;     // slope of the surface -> brightness
+  /* Slope alone draws only the EDGES of a wave, which is why the surface came
+     out as thin bright filaments with black between them - correct for a taut
+     film, wrong for something that should read as a body of liquid. Adding a
+     share of the displacement itself fills the moving mass in, and that is
+     what turns wisps into water with substance. */
+  const WATER_BODY = 120;     // displacement -> brightness
+  const WATER_RADIUS = 5;     // cells; a wider dip makes a longer, fatter wave
+  const WATER_DROP = 0.016;   // energy per drop laid along a stroke
+  /* When the surface is quieter than this the loop shuts down and wipes the
+     canvas. It has to be derived from the drop size, not written as a number:
+     it used to be a flat 0.045 from back when a drop carried 0.6, so calming
+     the water to 0.030 per drop put every ripple BELOW the threshold - the
+     loop decided the frame was already still and killed it half a second in.
+     Rings stopped travelling at all and the effect collapsed into a smudge
+     that followed the cursor. Tie it to the drop and it cannot drift again. */
+  const WATER_FLAT = WATER_DROP * 0.12;
+  let waterRows = 155;
+  let waterPrev = null;       // heights this tick
+  let waterCur = null;        // heights last tick
+  let waterCanvas = null;
+  let waterCtx = null;
+  let waterPix = null;
+  let waterRAF = null;
+  let waterIdle = 0;
+  let lastWX = -1;
+  let lastWY = -1;
+
+  function waterAlloc() {
+    if (!hoverFX || !CARD_W || !CARD_H) return;
+    const rows = Math.max(40, Math.min(240, Math.round(WATER_COLS * (CARD_H / CARD_W))));
+    if (waterCanvas && rows === waterRows) return;   // nothing changed shape
+    waterRows = rows;
+    const n = WATER_COLS * waterRows;
+    waterPrev = new Float32Array(n);
+    waterCur = new Float32Array(n);
+    if (!waterCanvas) {
+      waterCanvas = document.createElement('canvas');
+      waterCanvas.className = 'reel-card-water';
+      waterCanvas.setAttribute('aria-hidden', 'true');
+      waterCtx = waterCanvas.getContext('2d');
+    }
+    waterCanvas.width = WATER_COLS;
+    waterCanvas.height = waterRows;
+    waterPix = waterCtx.createImageData(WATER_COLS, waterRows);
+    // The surface is white throughout and only ever changes its alpha, so the
+    // frame's black shows through wherever the water is flat.
+    const d = waterPix.data;
+    for (let i = 0; i < n; i++) { d[i * 4] = 255; d[i * 4 + 1] = 255; d[i * 4 + 2] = 255; }
+  }
+
+  function waterStop() {
+    if (waterRAF !== null) { window.cancelAnimationFrame(waterRAF); waterRAF = null; }
+    if (waterPrev) { waterPrev.fill(0); waterCur.fill(0); }
+    if (waterPix && waterCtx) {
+      const d = waterPix.data;
+      for (let i = 3; i < d.length; i += 4) d[i] = 0;
+      waterCtx.putImageData(waterPix, 0, 0);
+    }
+    lastWX = lastWY = -1;
+  }
+
+  function waterDrop(px, py, power) {
+    if (!waterPrev) return;
+    const cx = Math.round((px / Math.max(1, CARD_W - FRAME_BORDER * 2)) * (WATER_COLS - 1));
+    const cy = Math.round((py / Math.max(1, CARD_H - FRAME_BORDER * 2)) * (waterRows - 1));
+    // A wide, soft dip rather than a poke. The width of the dip sets the
+    // wavelength of everything that comes off it, so a narrow one gives thin
+    // quick ripples and a broad one gives the long, heavy swell that reads as
+    // thicker liquid.
+    const R = WATER_RADIUS, R2 = R * R, FALL = R2 + 2;
+    for (let y = -R; y <= R; y++) {
+      const yy = cy + y;
+      if (yy < 1 || yy >= waterRows - 1) continue;
+      for (let x = -R; x <= R; x++) {
+        const xx = cx + x;
+        if (xx < 1 || xx >= WATER_COLS - 1) continue;
+        const d2 = x * x + y * y;
+        if (d2 > R2) continue;
+        waterPrev[yy * WATER_COLS + xx] -= power * (1 - d2 / FALL);
+      }
+    }
+    waterIdle = 0;
+    if (waterRAF === null) waterRAF = window.requestAnimationFrame(waterTick);
+  }
+
+  function waterTick() {
+    const W = WATER_COLS, H = waterRows;
+    const a = waterPrev, b = waterCur;
+
+    for (let y = 1; y < H - 1; y++) {
+      let i = y * W + 1;
+      for (let x = 1; x < W - 1; x++, i++) {
+        b[i] = ((a[i - 1] + a[i + 1] + a[i - W] + a[i + W]) * 0.5 - b[i]) * WATER_DAMP;
+      }
+    }
+    waterPrev = b; waterCur = a;               // the new heights become "now"
+
+    const h = waterPrev, d = waterPix.data;
+    let peak = 0;
+    for (let y = 1; y < H - 1; y++) {
+      let i = y * W + 1;
+      for (let x = 1; x < W - 1; x++, i++) {
+        // Two terms. The slope is the light catching the tilt of the surface
+        // - that is what makes it read as water and not as a stain. The body
+        // is the displaced mass underneath it, and without that term the
+        // frame only ever shows the creases between waves.
+        let v = ((h[i - 1] - h[i + 1]) + (h[i - W] - h[i + W])) * WATER_GAIN;
+        if (v < 0) v = -v * 0.42;              // far side of each ridge, kept faint
+        const m = h[i] < 0 ? -h[i] : h[i];
+        v += m * WATER_BODY;
+        d[i * 4 + 3] = v > 255 ? 255 : v;
+        if (m > peak) peak = m;
+      }
+    }
+    waterCtx.putImageData(waterPix, 0, 0);
+
+    waterIdle++;
+    if (peak < WATER_FLAT && waterIdle > 24) { waterStop(); return; }
+    waterRAF = window.requestAnimationFrame(waterTick);
+  }
+
+  /* Drops are laid along the path at a fixed spacing, and each one carries the
+     same small amount of energy. Both halves of that matter:
+
+     - Fixed SPACING is what stops a quick flick shattering. The step count
+       used to be capped at eight however far the pointer had travelled, so a
+       200px flick in one frame laid eight craters 25px apart - and a crater is
+       only three cells wide. Measured on the old build: a 205px flick left
+       sixteen dead gaps along its own stroke, alpha falling to nothing between
+       the blobs. That bead of separate holes is what read as broken water.
+     - Fixed energy PER DROP means a stroke costs what its length costs, not
+       what its speed costs. Sweeping fast and sweeping slow across the same
+       path now disturb the surface by the same amount, which is both what
+       water does and the reason a fast move no longer erupts. */
+  const WATER_STEP_PX = 2.5;   // one drop per 2.5px of path
+  const WATER_STEP_MAX = 72;   // ceiling, so one freak jump cannot stall a frame
+
+  function waterStroke(px, py) {
+    if (lastWX < 0) {
+      waterDrop(px, py, WATER_DROP * 3);
+      lastWX = px; lastWY = py;
+      return;
+    }
+    const dx = px - lastWX, dy = py - lastWY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.4) return;
+    const steps = Math.max(1, Math.min(WATER_STEP_MAX, Math.round(dist / WATER_STEP_PX)));
+    for (let k = 1; k <= steps; k++) {
+      waterDrop(lastWX + dx * (k / steps), lastWY + dy * (k / steps), WATER_DROP);
+    }
+    lastWX = px; lastWY = py;
+  }
+
+  /* ---- the word behind the reel -----------------------------------------
+     The frame at the centre also writes its name across the back wall, huge
+     and nearly the colour of the room. Re-triggering the animation means
+     taking the class off, forcing a reflow to flush it, and putting it back -
+     without that read the browser coalesces both changes and nothing plays. */
+  const ghostWord = document.getElementById('reelGhostWord');
+  /* Two copies of the word stacked, not one. The sharp copy is masked away
+     below its own midline and the blurred copy is masked away above it, so
+     the letters go soft on the way down. It has to be two SIBLINGS: a mask on
+     an element clips its pseudo-elements and children too, so a ::after
+     carrying the blurred copy would be cut away by the very mask that fades
+     the sharp one out. */
+  const ghostSharp = ghostWord && ghostWord.querySelector('.reel-ghost-sharp');
+  const ghostBlur = ghostWord && ghostWord.querySelector('.reel-ghost-blur');
+  /* Same problem as the titles, one scale up: the word runs on one line, so a
+     fixed size means a long name is simply wider than the screen and loses a
+     letter off each end. Measured rather than guessed at, because the answer
+     depends on the word - POSTER and EXPERIENCE DESIGN want very different
+     sizes to fill the same width. */
+  function fitGhost() {
+    if (!ghostWord || !ghostSharp || !ghostSharp.textContent) return;
+    ghostWord.style.fontSize = '';
+    const avail = window.innerWidth * 0.94;
+    const need = ghostWord.getBoundingClientRect().width;
+    if (!need || need <= avail) return;
+    const base = parseFloat(window.getComputedStyle(ghostWord).fontSize) || 0;
+    if (base) ghostWord.style.fontSize = (base * (avail / need)) + 'px';
+  }
+  function setGhost(text) {
+    if (!ghostWord || !ghostSharp || !text) return;
+    if (ghostSharp.textContent === text) return;
+    ghostSharp.textContent = text;
+    if (ghostBlur) ghostBlur.textContent = text;
+    fitGhost();
+    ghostWord.classList.remove('is-in');
+    void ghostWord.offsetWidth;
+    ghostWord.classList.add('is-in');
+  }
+
+  /* ---- pager ------------------------------------------------------------- */
+  const dotsWrap = document.getElementById('reelDots');
+  const dots = [];
+  if (dotsWrap) {
+    WORKS.forEach((w, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'reel-dot';
+      b.setAttribute('aria-label', w.caption || ('Work ' + (i + 1)));
+      b.addEventListener('click', () => goToIndex(i));
+      dotsWrap.appendChild(b);
+      dots.push(b);
+    });
+  }
+  function setDot(i) {
+    for (let k = 0; k < dots.length; k++) dots[k].classList.toggle('is-on', k === i);
+  }
+  // Shortest way round: the ring is a loop, so stepping from the last work to
+  // the first is one turn forward, not six back.
+  function goToIndex(i) {
+    const vh = window.innerHeight;
+    const cur = Math.round(window.scrollY / vh);
+    let delta = i - (((cur % N) + N) % N);
+    if (delta > N / 2) delta -= N;
+    if (delta < -N / 2) delta += N;
+    if (!delta) return;
+    animateScrollTo((cur + delta) * vh, 460);
+  }
+  document.querySelectorAll('.reel-arrow').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const vh = window.innerHeight;
+      const cur = Math.round(window.scrollY / vh);
+      animateScrollTo((cur + (+btn.dataset.step || 0)) * vh, 460);
+    });
+  });
+
+  /* A title is one word as often as not, and a word cannot wrap. PHOTOGRAPHY
+     at the stylesheet's size is wider than the frame it sits in, and the frame
+     clips its children, so the last letters were simply cut off inside the
+     card. Measure what the line needs against what the frame gives and scale
+     the type down by exactly that ratio - text width is linear in font size,
+     so one correction lands it. Runs on layout, not per frame. */
+  function fitTitle(el) {
+    if (!el) return;
+    el.style.fontSize = '';
+    const need = el.scrollWidth, have = el.clientWidth;
+    if (!have || need <= have) return;
+    const base = parseFloat(window.getComputedStyle(el).fontSize) || 0;
+    if (base) el.style.fontSize = Math.max(12, base * (have / need)) + 'px';
+  }
 
   // Size the cards + ring radius so the "label" wraps around the cylinder
   // (regular N-gon inscribed radius for the given card width), pulled out
   // a bit further so neighbouring works sit further apart.
   let RADIUS = 0;
   let FORWARD = 0;
+  let CARD_W = 0;      // frontal card size, kept from layout() so the pointer
+  let CARD_H = 0;      // drift never has to measure anything at move time
+  let LAID_VH = 0;     // viewport height the current layout was built for
+  let DROP = 0;        // how far below centre the ring sits, so the wall word shows
+  const RING_SPREAD = 1.18;    // how far the ring is pushed out from the faces
+  const RING_FORWARD = 0.46;   // how far the whole ring is carried towards the camera
+  /* Focal length per unit of card width. Fixing the perspective in the
+     stylesheet instead made the scene change SHAPE with the screen: a fixed
+     distance against a shrinking ring means the ring sits relatively further
+     away, the outer pair tucks in, and below about 1100px the frames started
+     overlapping their neighbours by up to 19px - which read as a collision
+     rather than depth once every frame was given the same presence. Scaling
+     the camera with the ring makes the whole composition one shape at any
+     size, so the gaps stay proportional and never cross zero. */
+  const PERSPECTIVE_PER_W = 3.617;
+  const scene = document.getElementById('reelScene');
+  /* Seven frames on a ring puts the outer pair 103 degrees off dead-ahead -
+     past square, so they present an edge two thirds of a finger wide and, but
+     for DoubleSide, would be showing their backs. Turning each frame partway
+     back towards the camera keeps the ring's arrangement while letting all
+     five read as frames. 0 would be a bare cylinder, 1 would be five flat
+     cards in a row with no ring at all. */
+  const RING_FACE = 0.34;
+
+  /* ---- what the composition measures, per unit of card width ---------------
+     Everything below is a pure ratio because the camera scales with the ring:
+     double the card and the whole picture doubles. Measured at 1600x900 and
+     again at 1024x768 and they agreed to three decimals, which is the proof
+     that the scene really is one shape at every size.
+       SPREAD3  the three facing frames, outer edge to outer edge - the pair
+                beyond them is no longer shown, so this is what has to fit.
+                (The five-frame span was 3.717 by the same measurement, which
+                is why dropping to three buys the frame nearly half again its
+                width on the same screen.)
+       FRONT_MAG  how much the perspective magnifies the frontal frame. It sits
+                  nearer the camera than the ring's axis by (radius - forward),
+                  so this is derived rather than typed: mistyping it would
+                  silently mis-budget the vertical room below. */
+  const SPREAD3_PER_W = 2.542;
+  const RING_K = 1 / (2 * Math.tan(Math.PI / N));            // inradius per unit width
+  const FRONT_MAG = PERSPECTIVE_PER_W /
+                    (PERSPECTIVE_PER_W + RING_K * RING_SPREAD * (1 - RING_FORWARD));
+
+  /* ---- the vertical budget -------------------------------------------------
+     The frames no longer sit dead centre: they are carried down far enough for
+     the word on the back wall to clear their tops. On a 1366x768 laptop - the
+     commonest screen there is - the word was showing 0px above the frames, so
+     the feature simply did not exist there. The drop is a share of the height
+     rather than a fixed number of pixels so it stays the same picture on any
+     screen, and the frame size is then solved against what is LEFT rather than
+     assumed to fit. */
+  const REEL_DROP = 0.055;                 // share of the viewport height
+  /* One proportion, held everywhere. It used to be a range - 1.5 preferred,
+     squashing to 1.28 when a screen had width to spare but no height - and the
+     effect was that most 16:9 screens got a chunky frame instead of the tall
+     one the design is drawn around. Measured off the reference: a frame 369px
+     across and 564px tall, which is 1.53. So the frame keeps its shape and
+     gets SMALLER when the height runs out, rather than getting wider. */
+  const CARD_RATIO = 1.5;
+  const W_COMFORT = 300;   // css width below which a frame stops being readable
+  const W_CAP = 560;       // ceiling, so a huge monitor does not get a poster
+
   function layout() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    // Phones get a wider, shorter card: 36% of a narrow viewport is a sliver
-    // that is hard to read and hard to tap. Desktop sizing is untouched.
+    // Phones get a wider card: a third of a narrow viewport is a sliver that is
+    // hard to read and hard to tap, and there is no room for neighbours anyway.
     const narrow = vw <= 700;
-    const w = narrow ? Math.min(vw * 0.58, 340) : Math.min(vw * 0.36, 420);
-    const h = narrow ? Math.min(vh * 0.58, 540) : vh * 0.70;
-    const radius = (w / (2 * Math.tan(Math.PI / N))) * 1.22;   // bigger ring, still some spacing
+    LAID_VH = vh;
+
+    /* Where the frames sit, and therefore how much room they have. The drop is
+       what makes the wall word visible, and it is spent out of the bottom of
+       the budget - so it has to be paid for here rather than discovered later
+       as frames sitting on top of the pager. */
+    DROP = vh * REEL_DROP;
+    const cy = vh / 2 + DROP;                       // centre of the frames
+    /* Both bands are a share of the height with a floor under them, and the
+       floor itself gives way on a very short screen. A flat 92px "clear of the
+       pager" was a pixel short of the pager's own 91px band on a 1920x720
+       window - the frame landed 1px above the arrows - and a floor that never
+       yields would take a landscape phone's whole viewport and leave an 87px
+       frame. */
+    const headRoom = Math.min(vh * 0.14, Math.max(74, vh * 0.085));
+    const footRoom = Math.min(vh * 0.19, Math.max(118, vh * 0.145));
+    // rendered height the frontal frame may take, converted back to css px
+    const hRoom = 2 * Math.min(cy - headRoom, vh - footRoom - cy) / FRONT_MAG;
+
+    /* Three frames across, and the frame is as wide as that allows. Sizing for
+       five was what kept them small: the same screen holds three frames
+       1.46x wider, because the span is 2.542 card-widths instead of 3.717.
+       W_COMFORT is the floor under it - past that point the frame stops being
+       readable, so it holds that size and lets its neighbours run past the
+       edges instead of everything shrinking together. */
+    const edge = Math.max(24, vw * 0.03);
+    const wThree = (vw - edge * 2) / SPREAD3_PER_W;
+    let w = narrow
+      ? Math.min(vw * 0.70, 300)
+      : Math.min(Math.max(wThree, W_COMFORT), W_CAP);
+
+    /* ...and then the height has its say. On nearly every 16:9 screen it is the
+       height that binds, not the width: a short wide window (1920x800, or any
+       laptop carrying three toolbars) has room across it and none down it. The
+       frame narrows to keep its proportion rather than filling that width -
+       w only ever goes DOWN here, so the width fit above still holds. */
+    w = Math.min(w, hRoom / CARD_RATIO);
+    const h = w * CARD_RATIO;
+    /* Seven faces on a ring means at most five can ever face the camera - the
+       other two are round the back. Getting all five ON SCREEN is a matter of
+       how hard the perspective magnifies the outermost pair: they sit nearest
+       the camera, so a short focal length throws them sideways off the edges.
+       A wider ring plus a shallower push forward keeps them in frame without
+       shrinking the frontal card, which is why both numbers moved together. */
+    const radius = (w / (2 * Math.tan(Math.PI / N))) * RING_SPREAD;
     RADIUS = radius;
-    FORWARD = radius * 0.72;   // brings the frontal work forward to screen centre
+    CARD_W = w;
+    CARD_H = h;
+    if (scene) {
+      scene.style.perspective = (w * PERSPECTIVE_PER_W).toFixed(0) + 'px';
+      /* Carry the ring down by DROP. Padding moves the flex centre by half of
+         what is added, and the vanishing point has to travel with it: leave
+         perspective-origin at the middle of the screen and the frames are
+         suddenly being looked down on, which bends the whole composition
+         instead of simply lowering it. Moving both is the same picture, put
+         lower on the page. */
+      scene.style.paddingTop = (DROP * 2).toFixed(1) + 'px';
+      scene.style.perspectiveOrigin = '50% calc(50% + ' + DROP.toFixed(1) + 'px)';
+    }
+    // grid follows the frame's proportions, otherwise a ring drawn on a
+    // 3:4 grid and stretched over a tall phone frame comes out an ellipse
+    waterAlloc();
+    FORWARD = radius * RING_FORWARD;   // brings the frontal work forward to screen centre
 
     cards.forEach((c, i) => {
       c.style.width = w + 'px';
@@ -1423,25 +1903,37 @@ document.addEventListener('DOMContentLoaded', () => {
       // scroll-to-spin direction reads correctly — see render()'s matching sign.
       c.dataset.baseTf = 'rotateY(' + (-i * STEP_DEG).toFixed(2) + 'deg) translateZ(' + (-radius).toFixed(1) + 'px)';
       c.style.transform = c.dataset.baseTf;
+      fitTitle(c.querySelector('.wk-title'));
 
-      const cap = captions[i];
-      if (cap) {
-        cap.style.width = w + 'px';
-        cap.style.marginLeft = (-w / 2) + 'px';
-        cap.dataset.baseTf = c.dataset.baseTf + ' translateY(' + (h / 2 + 22) + 'px)';
-        cap.style.transform = cap.dataset.baseTf;
-      }
+      // nothing to place for the title any more — it lives inside the frame
+      // and is centred by the frame itself.
     });
     return radius;
   }
   layout();
-  window.addEventListener('resize', () => { layout(); render(); });
+  window.addEventListener('resize', () => {
+    /* Scroll is counted in pixels but the reel counts in viewport-heights, so a
+       change of height leaves the ring stranded between two frames - measured a
+       30px overlap between neighbours after one resize, which reads as frames
+       colliding rather than as depth. Re-express the same frame in the new
+       height. programmaticY marks it as ours so the scroll it causes is not
+       mistaken for the user and answered with a second snap. */
+    const f = LAID_VH ? Math.round(window.scrollY / LAID_VH) : 0;
+    layout();
+    fitGhost();
+    const y = f * window.innerHeight;
+    if (Math.abs(window.scrollY - y) > 1) {
+      programmaticY = Math.round(y);
+      window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+    }
+    render();
+  });
 
   // "Night Mirror" is the featured work — start the reel centred on it
   // instead of work #0, and stop the browser fighting that with its own
   // remembered scroll position on reload/back-navigation.
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-  const FEATURED_IDX = WORKS.findIndex((w) => w.name === 'Night Mirror');
+  const FEATURED_IDX = NUM_START;   // same frame the numbering starts on
   if (FEATURED_IDX > 0) {
     window.scrollTo({ top: FEATURED_IDX * window.innerHeight, left: 0, behavior: 'instant' });
   }
@@ -1470,6 +1962,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let ticking = false;
   let currentIdx = 0;                // work currently dead-centre — used to know what a click on the reel should open
+  let frontIdx = -1;                 // which card currently carries .is-front
+  let frontTitle = null;             // its title span, the one that leans
   let snapTimer = null;
   let snapRAF = null;
   let programmaticY = null;         // last y our own snap animation set — lets onScroll tell it apart from a real user scroll
@@ -1539,16 +2033,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const t = clamp(ad / 92, 0, 1);
       const scale = lerp(1, 0.55, t);   // frontal work stays its normal size, side works shrink
-      c.style.opacity = clamp(1.15 - ad / 125, 0, 1).toFixed(3);
-      c.style.filter = 'brightness(' + lerp(1, 0.42, t).toFixed(2) + ')';
-      c.style.transform = c.dataset.baseTf + ' scale(' + scale.toFixed(3) + ')';
+
+      /* Every frame that is shown reads at full strength - size and the turn
+         away from the camera carry the depth on their own, and dimming on top
+         of that only made the side frames hard to read for no gain.
+         What is left is a cut, and it now falls between the first ring of
+         neighbours and the second. Seven faces put them at 51 and 103 degrees
+         off dead-ahead: full presence holds to 62, past the pair that stays,
+         and is gone by 88, before the pair that does not. The window is the
+         one a frame crosses as it swings out towards the edge of the screen,
+         so frames arrive and leave at the sides rather than appearing in the
+         middle of the picture. */
+      const tail = clamp((88 - ad) / 26, 0, 1);
+      c.style.opacity = tail.toFixed(3);
+      // no brightness filter: one less compositing layer per frame, too
+      if (c.style.filter) c.style.filter = '';
+      /* The turn-back rides AFTER the ring placement in the transform list, so
+         it spins the frame about its own centre where it already stands rather
+         than moving it round the ring. NEGATIVE rel: the frame's net facing is
+         already `rel`, so subtracting a share of it turns the frame towards
+         the camera. Adding instead drives the outer pair past square until
+         they show a broad mirrored back - which measured WIDER than the pair
+         beside the centre, the giveaway that the sign was wrong. */
+      c.style.transform = c.dataset.baseTf +
+        ' rotateY(' + (-rel * RING_FACE).toFixed(2) + 'deg)' +
+        ' scale(' + scale.toFixed(3) + ')';
     });
 
-    // captions only show on the exact work they belong to, and only while
-    // that work is dead-centre — not a continuous fade like the cards
-    captions.forEach((cap, i) => {
-      if (cap) cap.style.opacity = i === bestIdx ? '1' : '0';
-    });
+    /* Only the frontal frame is interactive. .reel-scene is pointer-events:
+       none, so this class is what lets one frame opt back in — hover then
+       costs nothing per frame, because CSS :hover does the work rather than
+       JS measuring cards against the cursor. Toggled only when the frontal
+       work actually changes, not every frame. */
+    if (bestIdx !== frontIdx) {
+      const prevCard = cards[frontIdx];
+      if (prevCard) prevCard.classList.remove('is-front');
+      frontIdx = bestIdx;
+      const nextCard = cards[frontIdx];
+      frontTitle = nextCard ? nextCard.querySelector('.reel-card-body') : null;
+      setGhost(WORKS[frontIdx] && WORKS[frontIdx].caption);
+      setDot(frontIdx);
+      if (nextCard) {
+        nextCard.classList.add('is-front');
+        // the single surface follows the frontal frame; anything still
+        // rippling belonged to the frame we just left, so it goes flat
+        if (waterCanvas && waterCanvas.parentNode !== nextCard) {
+          waterStop();
+          nextCard.insertBefore(waterCanvas, nextCard.firstChild);
+        }
+      }
+    }
 
     currentIdx = bestIdx;
     reel.classList.toggle('reel-link-active', !!(WORKS[bestIdx] && WORKS[bestIdx].link));
@@ -1638,6 +2172,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function onPointerMove(e) {
+    // Reuses the listener the drag already installed rather than adding a
+    // second one. offsetX/offsetY come in already mapped through the frame's
+    // own 3D transform, so the splash lands under the cursor with nothing
+    // measured; the target check is what keeps it to the frontal frame,
+    // since that is the only card CSS lets the pointer reach.
+    if (hoverFX && !dragging && e.target === cards[frontIdx]) {
+      waterStroke(e.offsetX, e.offsetY);
+      if (frontTitle) {
+        // -1..1 across the frame. Published as bare numbers; the CSS decides
+        // what they mean and, crucially, only reads them while the frame is
+        // hovered - so letting go unwinds the lean through the same easing
+        // with nothing to reset here.
+        const nx = (e.offsetX / Math.max(1, CARD_W - FRAME_BORDER * 2)) * 2 - 1;
+        const ny = (e.offsetY / Math.max(1, CARD_H - FRAME_BORDER * 2)) * 2 - 1;
+        frontTitle.style.setProperty('--tx', (nx < -1 ? -1 : nx > 1 ? 1 : nx).toFixed(3));
+        frontTitle.style.setProperty('--ty', (ny < -1 ? -1 : ny > 1 ? 1 : ny).toFixed(3));
+      }
+    } else if (lastWX >= 0) {
+      lastWX = lastWY = -1;   // left the frame: next entry starts a fresh stroke
+    }
     if (!dragging && !axisPending) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;

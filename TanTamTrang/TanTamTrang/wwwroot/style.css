@@ -1764,7 +1764,7 @@ body.home-video-body::-webkit-scrollbar{
    ========================================== */
 .works-reel{
   position:relative;
-  background:#050505;
+  background:#000;
   cursor:grab;
   touch-action:pan-y;
 }
@@ -1793,7 +1793,11 @@ body.home-video-body::-webkit-scrollbar{
   justify-content:center;
   overflow:hidden;
   pointer-events:none;
-  perspective:1100px;
+  /* Fallback only. layout() sets the real focal length in proportion to the
+     card width, so the scene keeps one shape at every screen size. A long
+     lens is what lets five frames fit: the outermost pair sits nearest the
+     camera, and a short one throws them sideways off the edges. */
+  perspective:1700px;
 }
 .reel-ring{
   position:relative;
@@ -1802,34 +1806,319 @@ body.home-video-body::-webkit-scrollbar{
   transform-style:preserve-3d;
   will-change:transform;
 }
+/* Each frame is now just that: a hairline of white on black, holding nothing
+   but the water the cursor stirs. No photograph, no wash, no gradient. */
 .reel-card{
   position:absolute;
   top:50%;
   left:50%;
-  overflow:hidden;
-  background:#0c0c0c;
+  overflow:hidden;                       /* the surface is clipped by the frame */
+  background:#292929;
+  border:2px solid rgba(255,255,255,.22);
   border-radius:22px;
-  box-shadow:0 30px 90px -30px rgba(0,0,0,.85);
   backface-visibility:hidden;
   will-change:transform, opacity, filter;
+  /* .reel-scene is pointer-events:none so the whole reel stays draggable as
+     one surface. Only the frontal frame opts back in, which is what keeps the
+     water to the one frame the cursor can actually reach. */
+  pointer-events:none;
 }
-.reel-card img{
+.reel-card.is-front{
+  pointer-events:auto;
+}
+
+/* The water. A small grid stretched over the frame — the upscale is doing
+   real work here: it is what turns a 116-cell-wide simulation into something
+   that reads as a soft surface instead of steps. Never takes the pointer, so
+   offsetX/offsetY always arrive measured against the frame itself. */
+.reel-card-water{
+  position:absolute;
+  inset:0;
   width:100%;
   height:100%;
-  object-fit:cover;
-  object-position:center;
   display:block;
+  pointer-events:none;
+  z-index:1;
 }
-.reel-card-caption{
+
+/* ---------------------------------------------------------------------
+   Everything written on a frame sits in one element, and that element is
+   the one that zooms and leans under the cursor - so the number, the title
+   and the footer line move as one piece instead of three effects that have
+   to be kept in step. Only the frame at dead centre is fully written out;
+   the others hold their words back and let them rise into place as they
+   arrive at the middle.
+   --------------------------------------------------------------------- */
+.reel-card-body{
   position:absolute;
-  top:50%;
-  left:50%;
-  text-align:center;
-  font:600 22px/1.2 Arial, Helvetica, sans-serif;
-  letter-spacing:.22em;
+  inset:0;
+  z-index:3;
+  display:flex;
+  flex-direction:column;
+  padding:clamp(20px,2.1vw,30px);
+  color:#fff;
+  /* The water is white and so is the type; a dark halo keeps every line
+     readable once the surface is busy, and living on the wrapper it covers
+     all of them at once. */
+  text-shadow:0 0 20px rgba(0,0,0,.92), 0 0 7px rgba(0,0,0,.85);
+  backface-visibility:hidden;
+  pointer-events:none;                   /* never stands between cursor and water */
+  scale:1;
+  transform:none;
+  /* Zoom and lean are split across two properties so each keeps its own
+     timing: the zoom is slow and cinematic, the lean has to answer the
+     cursor quickly or it reads as detached from the hand moving it. */
+  transition:scale 620ms cubic-bezier(.16,.84,.32,1),
+             transform 260ms cubic-bezier(.16,.84,.32,1);
+}
+
+.wk-num{
+  font:400 clamp(10px,1.05vw,13px)/1 var(--mono);
+  letter-spacing:.14em;
+  color:rgba(255,255,255,.55);
+  opacity:.78;
+  transition:opacity 460ms cubic-bezier(.16,.84,.32,1);
+}
+.reel-card.is-front .wk-num{ opacity:1; }
+.wk-num b{
+  font-weight:700;
+  font-size:1.45em;
+  color:#fff;
+  letter-spacing:.06em;
+}
+
+/* Title block sits low in the frame, with room kept below it for the row
+   that runs along the bottom edge. */
+.wk-mid{
+  margin-top:auto;
+  margin-bottom:clamp(40px,4.8vw,66px);
+}
+.wk-title{
+  font:700 clamp(22px,3.3vw,50px)/0.98 Arial, Helvetica, sans-serif;
+  letter-spacing:.005em;
+  text-transform:uppercase;
+  color:#fff;
+  opacity:.84;
+  transition:opacity 460ms cubic-bezier(.16,.84,.32,1);
+}
+.reel-card.is-front .wk-title{ opacity:1; }
+
+/* Rule and description belong to the centred frame only - they fade in as it
+   arrives and the three keywords fade out to make room, so a frame reaching
+   the middle trades one for the other instead of popping. */
+.wk-rule,
+.wk-desc{
+  opacity:0;
+  translate:0 8px;
+  transition:opacity 420ms cubic-bezier(.16,.84,.32,1),
+             translate 520ms cubic-bezier(.16,.84,.32,1);
+}
+.reel-card.is-front .wk-rule,
+.reel-card.is-front .wk-desc{ opacity:1; translate:0 0; }
+.wk-rule{
+  display:block;
+  width:clamp(22px,2.4vw,34px);
+  height:2px;
+  background:#fff;
+  margin:clamp(12px,1.5vw,20px) 0 clamp(10px,1.2vw,15px);
+}
+.wk-desc{
+  font:400 clamp(10px,1.1vw,14px)/1.6 Arial, Helvetica, sans-serif;
+  color:rgba(255,255,255,.74);
+  letter-spacing:.01em;
+}
+
+.wk-tags,
+.wk-explore{
+  position:absolute;
+  left:clamp(20px,2.1vw,30px);
+  right:clamp(20px,2.1vw,30px);
+  bottom:clamp(20px,2.1vw,30px);
+  transition:opacity 420ms cubic-bezier(.16,.84,.32,1);
+}
+.wk-tags{
+  font:400 clamp(8px,.86vw,10px)/1.95 var(--mono);
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.66);
+  opacity:1;
+}
+.reel-card.is-front .wk-tags{ opacity:0; }
+
+.wk-explore{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  font:400 clamp(8px,.86vw,10px)/1 var(--mono);
+  letter-spacing:.24em;
   text-transform:uppercase;
   color:rgba(255,255,255,.8);
-  backface-visibility:hidden;
-  will-change:transform, opacity;
-  transition:opacity .3s ease;
+  opacity:0;
+}
+.reel-card.is-front .wk-explore{ opacity:1; }
+.wk-arrow{
+  width:clamp(30px,3.2vw,46px);
+  height:8px;
+  flex:none;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1;
+}
+
+@media (hover:hover) and (pointer:fine){
+  /* Rotation and scale both turn about the element's own centre, so the whole
+     block zooms and tips towards the cursor without drifting off the middle
+     of the frame - the point of doing it with rotation rather than a nudge.
+     The scale is gentler than it was when only a word moved: this block runs
+     nearly the full frame, and 11% of that would push the corners past the
+     padding and into the border. */
+  .reel-card.is-front:hover .reel-card-body{
+    scale:1.05;
+    transform:perspective(760px)
+              rotateY(calc(var(--tx,0) * 8deg))
+              rotateX(calc(var(--ty,0) * -8deg));
+  }
+}
+
+/* ---------------------------------------------------------------------
+   The word on the back wall. The frame at the centre writes its own name
+   across the room, huge and nearly the colour of the wall, and each new
+   frame arriving brings its name up from below.
+   --------------------------------------------------------------------- */
+.reel-ghost{
+  position:fixed;
+  inset:0;
+  z-index:4;                 /* under .reel-scene (10): the cards stand in front */
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  pointer-events:none;
+}
+.reel-ghost-word{
+  /* A ceiling only; fitGhost() measures the actual word and scales down from
+     here whenever it would run off the sides. The height term is what stops a
+     short wide window - 1920x720, or any laptop carrying three toolbars - from
+     sizing the word off 17% of a very wide screen and driving it up under the
+     header; on an ordinary 16:9 or 16:10 it is the width that decides, as
+     before. */
+  font:800 clamp(72px,min(17vw,30vh),280px)/0.9 Arial, Helvetica, sans-serif;
+  letter-spacing:.01em;
+  text-transform:uppercase;
+  color:#1e1e1e;
+  white-space:nowrap;
+  position:relative;
+  display:inline-block;
+  opacity:0;
+  /* Sits high, above the tops of the frames rather than square behind them -
+     the frames are carried down to meet it (see REEL_DROP in script.js), and
+     between the two the word now shows a clear band of itself instead of the
+     28px that used to peek out on a 1080p screen and the 0px on a 1366x768.
+     Written against the word's own size (half a line box is .45em at this
+     line-height) so it holds that height whatever the word does to the type
+     size. */
+  align-self:start;
+  /* ...and the floor keeps it clear of the header when 20% of the height is
+     less than the word is tall. */
+  margin-top:max(56px,calc(20vh - .45em));
+}
+.reel-ghost-sharp{
+  display:block;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 44%,transparent 76%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 44%,transparent 76%);
+}
+.reel-ghost-blur{
+  position:absolute;
+  left:0;
+  top:0;
+  filter:blur(11px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.9) 64%,rgba(0,0,0,.4) 100%);
+  mask-image:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.9) 64%,rgba(0,0,0,.4) 100%);
+}
+.reel-ghost-word.is-in{
+  animation:reel-ghost-in 860ms cubic-bezier(.16,.84,.32,1) both;
+}
+@keyframes reel-ghost-in{
+  from{ opacity:0; transform:translateY(34px) scale(.972); }
+  to  { opacity:1; transform:none; }
+}
+
+/* The ring the frames stand on - it follows them down, or it would be cutting
+   across their middles instead of sitting under them. */
+.reel-stage{
+  position:fixed;
+  left:50%;
+  top:83.5%;
+  width:min(1460px,94vw);
+  height:min(300px,25vh);
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:50%;
+  z-index:5;
+  pointer-events:none;
+}
+
+/* Pager. */
+.reel-pager{
+  position:fixed;
+  left:50%;
+  bottom:clamp(28px,4.4vw,62px);
+  transform:translateX(-50%);
+  z-index:14;
+  display:flex;
+  align-items:center;
+  gap:clamp(14px,1.8vw,24px);
+}
+.reel-arrow{
+  background:none;
+  border:0;
+  padding:6px 8px;
+  font:400 17px/1 Arial, Helvetica, sans-serif;
+  color:rgba(255,255,255,.45);
+  cursor:pointer;
+  transition:color .3s ease;
+}
+.reel-arrow:hover{ color:#fff; }
+.reel-dots{ display:flex; align-items:center; gap:clamp(9px,1.1vw,14px); }
+.reel-dot{
+  width:6px;
+  height:6px;
+  padding:0;
+  border:1px solid rgba(255,255,255,.36);
+  border-radius:50%;
+  background:none;
+  cursor:pointer;
+  transition:background-color .3s ease, border-color .3s ease, transform .3s ease;
+}
+.reel-dot:hover{ border-color:rgba(255,255,255,.8); }
+.reel-dot.is-on{ background:#fff; border-color:#fff; transform:scale(1.15); }
+
+/* Marker under the current section, scoped to this page so no other page's
+   header moves. */
+.works-page .topnav a.active{ position:relative; }
+.works-page .topnav a.active::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-9px;
+  width:3px;
+  height:3px;
+  margin-left:-1.5px;
+  border-radius:50%;
+  background:#fff;
+}
+
+@media(max-width:900px){
+  .reel-stage{ display:none; }
+  /* 52, not 40: this rule also catches a phone held sideways, where 16% of a
+     390px height is less than the word is tall and the floor is the only thing
+     between the capitals and the header. */
+  .reel-ghost-word{ margin-top:max(52px,calc(16vh - .45em)); }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .reel-card-body,
+  .wk-num,.wk-title,.wk-rule,.wk-desc,.wk-tags,.wk-explore{ transition:none; }
+  .reel-card.is-front:hover .reel-card-body{ scale:1; transform:none; }
+  .reel-ghost-word.is-in{ animation:none; opacity:1; }
 }

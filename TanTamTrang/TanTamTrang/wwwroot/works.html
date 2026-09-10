@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TAN — Works</title>
   <script>try{var d=document.documentElement;if(sessionStorage.getItem('hwTear')==='1'){d.classList.add('hw-tear-pending');sessionStorage.removeItem('hwTear');}if(sessionStorage.getItem('wcSplit')==='1'){d.classList.add('wc-split-pending');sessionStorage.removeItem('wcSplit');}if(sessionStorage.getItem('ptEnter')==='1'){d.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=59">
+  <link rel="stylesheet" href="style.css?v=91">
 </head>
 <body class="works-page">
 
@@ -89,6 +89,20 @@
   <div class="reel-scroll-spacer" aria-hidden="true"></div>
 </main>
 
-<script src="script.js?v=59"></script>
+<!-- Fixed furniture around the reel. Deliberately OUTSIDE <main class="works-reel">:
+     the reel claims pointerdown on itself to drive the drag, and a press that
+     ends without moving is read as a tap on the centred work and navigates. A
+     pager dot living inside it would therefore open a page instead of turning
+     the ring. Out here the reel's listener never sees these at all. -->
+<div class="reel-ghost" aria-hidden="true"><span class="reel-ghost-word" id="reelGhostWord"><span class="reel-ghost-sharp"></span><span class="reel-ghost-blur"></span></span></div>
+<div class="reel-stage" aria-hidden="true"></div>
+
+<nav class="reel-pager" id="reelPager" aria-label="Works">
+  <button class="reel-arrow" type="button" data-step="-1" aria-label="Previous work">&#8249;</button>
+  <span class="reel-dots" id="reelDots"></span>
+  <button class="reel-arrow" type="button" data-step="1" aria-label="Next work">&#8250;</button>
+</nav>
+
+<script src="script.js?v=91"></script>
 </body>
 </html>
