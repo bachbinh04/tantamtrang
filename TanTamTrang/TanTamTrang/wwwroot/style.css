@@ -196,6 +196,105 @@ img{max-width:100%;display:block}
   border-color:#fff;
 }
 
+/* 3D / VIDEO (Works sub-page). Two 16:9 loops set on a twelve-column grid
+   and staggered - the first holds the left, the second the right - so two
+   frames of the same shape read as a sequence rather than a stack.
+   Each one opens as it scrolls in: the frame's clip widens from a letterbox
+   to the full picture while the clip lifts into place. Hovering eases the
+   footage in a little behind the fixed frame, as the frames on Works do. */
+.vid-grid{
+  max-width:1240px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  row-gap:clamp(56px,10vw,140px);
+  column-gap:clamp(12px,2vw,24px);
+  padding-bottom:16vh;
+}
+.vid-a{ grid-column:1 / span 10; }
+.vid-b{ grid-column:3 / span 10; }
+.vid-item{
+  margin:0;
+  opacity:0;
+  transform:translateY(48px);
+  transition:opacity 900ms cubic-bezier(.16,.84,.32,1),
+             transform 1100ms cubic-bezier(.16,.84,.32,1);
+}
+.vid-item.is-in{
+  opacity:1;
+  transform:none;
+}
+.vid-frame{
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:14px;
+  background:#0b0b0b;
+  aspect-ratio:16/9;
+  clip-path:inset(14% 0 14% 0 round 14px);
+  transition:clip-path 1300ms cubic-bezier(.16,.84,.32,1), border-color .4s ease;
+}
+.vid-item.is-in .vid-frame{
+  clip-path:inset(0 0 0 0 round 14px);
+}
+.vid{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  scale:1;
+  transition:scale 900ms cubic-bezier(.16,.84,.32,1);
+}
+@media (hover:hover) and (pointer:fine){
+  .vid-frame:hover{ border-color:rgba(255,255,255,.42); }
+  .vid-frame:hover .vid{ scale:1.04; }
+}
+.vid-item figcaption{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:baseline;
+  gap:18px;
+  padding:16px 2px 0;
+  font:10px var(--mono);
+  letter-spacing:.14em;
+  color:var(--muted);
+}
+.vid-name{
+  font:700 clamp(15px,1.6vw,22px)/1 Arial, Helvetica, sans-serif;
+  letter-spacing:.02em;
+  color:#fff;
+}
+.vid-meta{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+/* a small red dot that breathes while the clip is running */
+.vid-live{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#ff4a2a;
+  opacity:.35;
+}
+.vid-item.is-playing .vid-live{
+  animation:vid-live 1.6s ease-in-out infinite;
+}
+@keyframes vid-live{
+  0%,100%{ opacity:.35; }
+  50%    { opacity:1; }
+}
+@media(max-width:800px){
+  .vid-a,.vid-b{ grid-column:1 / -1; }
+  .vid-item figcaption{ gap:12px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .vid-item{ opacity:1; transform:none; transition:none; }
+  .vid-frame{ clip-path:inset(0 0 0 0 round 14px); transition:none; }
+  .vid, .vid-frame:hover .vid{ scale:1; transition:none; }
+  .vid-item.is-playing .vid-live{ animation:none; opacity:1; }
+}
+
 /* POSTER (Works sub-page) */
 .poster-page{
   padding:118px 26px 0;

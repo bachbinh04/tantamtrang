@@ -1502,7 +1502,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Arachnid',         role: 'Photography',      img: 'images/spider-bw.jpg',      caption: 'Experience Design', link: 'experience-design.html',
       bg: 'images/ex-works.png',              bgPos: '50% 50%',
       desc: 'Interaction studies', years: '2024 — 2026', tags: ['Interactions', 'Products', 'And ideas'] },
-    { name: 'Jurassic Era',     role: 'Exhibition',       img: 'images/dino-01.jpg',        caption: '3D/Video',
+    { name: 'Jurassic Era',     role: 'Exhibition',       img: 'images/dino-01.jpg',        caption: '3D/Video', link: '3d-video.html',
       desc: 'Motion and volume',   years: '2024 — 2026', tags: ['Frames', 'Depth', 'Movement'] },
     { name: 'Fossil Structure', role: 'Visual Study',     img: 'images/dino-02.jpg',        caption: 'Photography', link: 'photography.html',
       bg: 'images/spider-bw.jpg',             bgPos: '50% 50%',
@@ -3315,4 +3315,63 @@ document.addEventListener('DOMContentLoaded', () => {
       fitFrame();
     }
   });
+})();
+
+/* ---- 3D / VIDEO page -------------------------------------------------------
+   Each clip reveals as it scrolls into view and plays only while it is on
+   screen; scrolled away, or with the tab in the background, it pauses. Two
+   1080p loops decoding permanently would cost battery for footage nobody is
+   looking at.
+   Visibility is worked out from the two figures' positions on scroll and
+   resize rather than with an IntersectionObserver. An observer delivers
+   nothing until the page has rendered a frame, so a tab that opens in the
+   background could leave both figures sitting at opacity 0 in their
+   letterboxed clip until something woke it; two rectangles read on a
+   throttled scroll are cheap and cannot go quiet. It also runs once on load,
+   so the first clip is revealed without the reader having to scroll.
+   play() returns a promise that rejects if the browser refuses to autoplay;
+   that is swallowed, and the frame shows its first picture instead. */
+(function () {
+  const items = [...document.querySelectorAll('.vid-item')];
+  if (!items.length) return;
+  const vids = items.map((it) => it.querySelector('video'));
+  const SHOWN = 0.2;          // share of a figure on screen that counts as "in view"
+
+  const play = (v) => {
+    if (!v || document.hidden || !v.paused) return;
+    const p = v.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  };
+  vids.forEach((v, i) => {
+    if (!v) return;
+    v.addEventListener('playing', () => items[i].classList.add('is-playing'));
+    v.addEventListener('pause', () => items[i].classList.remove('is-playing'));
+  });
+
+  function sync() {
+    pending = null;
+    const vh = window.innerHeight;
+    items.forEach((it, i) => {
+      const r = it.getBoundingClientRect();
+      const seen = Math.max(0, Math.min(vh, r.bottom) - Math.max(0, r.top));
+      const inView = r.height > 0 && seen / Math.min(r.height, vh) >= SHOWN;
+      const v = vids[i];
+      if (inView) {
+        it.classList.add('is-in');        // reveal once; it stays revealed
+        play(v);
+      } else if (v && !v.paused) {
+        v.pause();
+      }
+    });
+  }
+  let pending = null;
+  const schedule = () => { if (pending === null) pending = setTimeout(sync, 80); };
+
+  window.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) vids.forEach((v) => { if (v && !v.paused) v.pause(); });
+    else sync();
+  });
+  sync();
 })();
