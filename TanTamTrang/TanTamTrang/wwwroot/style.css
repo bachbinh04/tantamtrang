@@ -148,6 +148,54 @@ img{max-width:100%;display:block}
   margin:34px 0 58px;
 }
 
+/* EXPERIENCE DESIGN (Works sub-page): the case study as a column of pages,
+   each at its own proportion - these are laid-out spreads, so nothing is
+   cropped. */
+.ed-deck{
+  max-width:1240px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:clamp(18px,3vw,40px);
+  padding-bottom:clamp(48px,8vh,96px);
+}
+.ed-page{
+  margin:0;
+}
+.ed-page img{
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:6px;
+  background:#111;
+}
+.ed-pdf{
+  margin-left:22px;
+}
+.ed-cta{
+  display:flex;
+  justify-content:center;
+  padding:0 0 14vh;
+}
+/* The one button on the page: outlined in white like the frames on Works,
+   filling white on hover so it reads as the place to go next. */
+.ed-figma{
+  display:inline-block;
+  padding:18px 34px;
+  border:1px solid rgba(255,255,255,.7);
+  border-radius:999px;
+  font:12px/1 var(--mono);
+  letter-spacing:.18em;
+  color:#fff;
+  transition:background-color .3s ease, color .3s ease, border-color .3s ease;
+}
+.ed-figma:hover,
+.ed-figma:focus-visible{
+  background:#fff;
+  color:#000;
+  border-color:#fff;
+}
+
 /* POSTER (Works sub-page) */
 .poster-page{
   padding:118px 26px 0;
@@ -709,6 +757,38 @@ html.lb-lock body{ overflow:hidden; }
   border-bottom:1px solid #666;
   font:10px var(--mono);
   letter-spacing:.08em;
+}
+/* A line this face has nothing for is removed, not left as a blank gap that
+   pushes the rest of the column off centre. */
+.about-copy .is-empty{
+  display:none;
+}
+/* The bio is a full paragraph. Ragged on the left, as the right column's short
+   lines are, it reads as a jagged edge for fifteen lines; set flush left
+   inside the same box it still sits against the right-hand side. */
+.about-copy.right p.is-long{
+  text-align:left;
+  /* six up from the column's 10px, and white rather than the column's grey;
+     the size is a ceiling - script.js brings it down only where the column
+     would otherwise run off a fixed panel, across or down */
+  font-size:var(--bio-size, 16px);
+  font-family:Arial, Helvetica, sans-serif;   /* the column's other lines stay mono */
+  color:#fff;
+  /* Set as the approved layout: single-spaced, one line per span, the block
+     exactly as wide as its longest line and still sitting on the right. */
+  line-height:1.15;
+  width:max-content;
+  max-width:100%;
+}
+.about-copy.right p.is-long .bio-line{
+  display:block;
+  white-space:nowrap;
+}
+/* A grid item will not shrink below its content by default; with lines that
+   cannot wrap, that would push the column wider than its track instead of
+   letting the script see the overflow and bring the size down. */
+.about-copy{
+  min-width:0;
 }
 .cube-zone{
   /* This sits in a position:fixed, 100vh panel — anything that spills out of
@@ -1731,6 +1811,9 @@ body.home-video-body::-webkit-scrollbar{
     font-size:9px;
     line-height:1.6;
   }
+  .about-copy.right p.is-long{
+    font-size:var(--bio-size, 15px);   /* six up from 9px here too */
+  }
   .about-copy a{
     margin-top:14px;
   }
@@ -1838,7 +1921,42 @@ body.home-video-body::-webkit-scrollbar{
   height:100%;
   display:block;
   pointer-events:none;
+  z-index:2;                 /* over the picture and its shade, under the words */
+}
+
+/* A frame with a picture in it. The picture fills the frame whatever shape
+   the file is (object-position is set per work from script.js), and the
+   frame's border, radius and overflow clip it exactly as they clip the water.
+   The shade is there for the words, not for looks: measured under the title,
+   the brightest tenth of the Trung Thu poster sat at 187 of 255 and its
+   number corner at 237 - white type straight on top of that is not readable.
+   Darkest at the foot where the title and tags sit, a lighter band across the
+   top for the number, and clear through the middle of the picture. */
+.reel-card-bg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  z-index:0;
+  pointer-events:none;
+  user-select:none;
+  -webkit-user-drag:none;
+  scale:1;
+  translate:0 0;
+  /* the same two curves the words use, so picture and words move as one */
+  transition:scale 620ms cubic-bezier(.16,.84,.32,1),
+             translate 260ms cubic-bezier(.16,.84,.32,1);
+}
+.reel-card-shade{
+  position:absolute;
+  inset:0;
   z-index:1;
+  pointer-events:none;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 24%),
+    linear-gradient(to top, rgba(0,0,0,.74) 0%, rgba(0,0,0,.5) 32%, rgba(0,0,0,0) 64%);
 }
 
 /* ---------------------------------------------------------------------
@@ -1979,6 +2097,17 @@ body.home-video-body::-webkit-scrollbar{
               rotateY(calc(var(--tx,0) * 8deg))
               rotateX(calc(var(--ty,0) * -8deg));
   }
+  /* The picture goes with them: it zooms in with the words and slides the
+     other way from the cursor, the way a view through a window shifts when
+     you lean towards one side of it - the words tip forward, the picture
+     reads as further back. Inside the frame only: the frame, its border and
+     its radius do not move, and overflow clips the zoomed picture. The drift
+     (2.5% of the frame) stays inside the zoom's 4% margin on every side, so
+     no edge of the picture ever comes into view. */
+  .reel-card.is-front:hover .reel-card-bg{
+    scale:1.08;
+    translate:calc(var(--tx,0) * -2.5%) calc(var(--ty,0) * -2.5%);
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -2095,16 +2224,35 @@ body.home-video-body::-webkit-scrollbar{
   align-items:center;
   gap:clamp(14px,1.8vw,24px);
 }
+/* Previous / next, out at the sides of the room, level with the middle of the
+   frames: 50% of the screen plus the same 5.5vh the ring is dropped by
+   (REEL_DROP in script.js), so they stay on the frames' centre line at any
+   height. Bigger than they were in the pager - a 17px chevron alone at the
+   edge of a wide screen is easy to miss - with a generous hit area around it. */
 .reel-arrow{
+  position:fixed;
+  top:calc(50% + 5.5vh);
+  z-index:14;
+  width:56px;
+  height:56px;
+  margin-top:-28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   background:none;
   border:0;
-  padding:6px 8px;
-  font:400 17px/1 Arial, Helvetica, sans-serif;
-  color:rgba(255,255,255,.45);
+  padding:0;
+  font:300 44px/1 Arial, Helvetica, sans-serif;
+  color:rgba(255,255,255,.5);
   cursor:pointer;
-  transition:color .3s ease;
+  transition:color .3s ease, transform .3s ease;
 }
-.reel-arrow:hover{ color:#fff; }
+.reel-arrow-prev{ left:var(--reel-arrow-inset, clamp(12px,4.5vw,96px)); }
+.reel-arrow-next{ right:var(--reel-arrow-inset, clamp(12px,4.5vw,96px)); }
+.reel-arrow:hover,
+.reel-arrow:focus-visible{ color:#fff; }
+.reel-arrow-prev:hover{ transform:translateX(-4px); }
+.reel-arrow-next:hover{ transform:translateX(4px); }
 .reel-dots{ display:flex; align-items:center; gap:clamp(9px,1.1vw,14px); }
 .reel-dot{
   width:6px;
@@ -2146,6 +2294,8 @@ body.home-video-body::-webkit-scrollbar{
   .reel-card-body,
   .wk-num,.wk-title,.wk-rule,.wk-desc,.wk-tags,.wk-explore{ transition:none; }
   .reel-card.is-front:hover .reel-card-body{ scale:1; transform:none; }
+  .reel-card-bg{ transition:none; }
+  .reel-card.is-front:hover .reel-card-bg{ scale:1; translate:none; }
   .reel-ghost-word.is-in{ animation:none; opacity:1; }
   /* The surface still reflects, it just stops moving - see reflectSync(). */
   .reel-reflect{ filter:none; }

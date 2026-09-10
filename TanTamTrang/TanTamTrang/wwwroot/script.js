@@ -66,33 +66,58 @@ if (aboutPage) {
   const rightLabel = document.getElementById('rightLabel');
   const rightTitle = document.getElementById('rightTitle');
   const rightBody = document.getElementById('rightBody');
+  const cvLink = document.getElementById('aboutCv');
   const count = document.getElementById('aboutCount');
   const marker = buildRail(document.querySelector('.progress-rail'), faces.length);
   sizeLoopSpacer(document.querySelector('.about-cube-spacer'), faces.length);
 
   const N_FACES = faces.length;
 
+  /* One entry per cube face, in face order. An empty string means that line is
+     not shown at all on that face (see updateText), rather than left standing
+     as a blank gap in the column. `cv` puts the CV link in the right column.
+     `long` marks a body that runs to a full paragraph. */
   const slides = [
     {
-      lt: 'VISUAL DESIGNER',
-      lb: 'I build visual ideas through image-making, typography and atmosphere.',
-      rl: 'FOCUS',
-      rt: 'CONCEPT / IMAGE / DIRECTION',
-      rb: 'Selected works, experiments and personal visual research.'
+      lt: 'DESIGNER',
+      lb: '',
+      rl: '',
+      rt: '',
+      rb: 'I am a Communication Design student at RMIT University with a strong interest in visual-led, research-driven design. I am drawn to ideas that feel unfamiliar, visually distinctive and meaningful rather than simply attractive. Research is an important part of my process because it gives the visual a reason to exist and helps me develop concepts that go beyond obvious solutions. My current interests include photography, 3D and experience design, and I enjoy combining different disciplines to create stronger and more memorable outcomes. I want my work to make people stop, look closer and remember the idea behind it. I am not interested in developing one fixed style; I am more interested in building a recognisable creative point of view. My long-term ambition is to become an Art Director and lead projects where concept, visual direction and experimentation are equally important.',
+      long: true,
+      // set line for line as the approved layout breaks it, not left to wrap
+      lines: [
+        'I am a Communication Design student at',
+        'RMIT University with a strong interest in',
+        'visual-led, research-driven design. I am',
+        'drawn to ideas that feel unfamiliar, visually',
+        'distinctive and meaningful rather than',
+        'simply attractive. Research is an important',
+        'part of my process because it gives the',
+        'visual a reason to exist and helps me',
+        'develop concepts that go beyond obvious',
+        'solutions. My current interests include',
+        'photography, 3D and experience design,',
+        'and I enjoy combining different disciplines',
+        'to create stronger and more memorable',
+        'outcomes. I want my work to make people',
+        'stop, look closer and remember the idea',
+        'behind it. I am not interested in developing',
+        'one fixed style; I am more interested in',
+        'building a recognisable creative point of',
+        'view. My long-term ambition is to become',
+        'an Art Director and lead projects where',
+        'concept, visual direction and',
+        'experimentation are equally important.'
+      ]
     },
     {
-      lt: 'HYBRID PRACTICE',
-      lb: 'My practice moves between visual design, photography, type and experience.',
-      rl: 'APPROACH',
-      rt: 'RESEARCH / TEST / REFINE',
-      rb: 'Research and experimentation shape the visual language before the final execution.'
-    },
-    {
-      lt: 'ART DIRECTION',
-      lb: 'I am interested in building complete visual worlds rather than isolated graphics.',
-      rl: 'NEXT',
-      rt: '3D / MOTION / CULTURE',
-      rb: 'My practice will keep evolving into motion, 3D and larger visual systems.'
+      lt: 'RESUME',
+      lb: '',
+      rl: '',
+      rt: '',
+      rb: '',
+      cv: true
     },
     {
       lt: 'BEYOND STILL',
@@ -148,23 +173,128 @@ if (aboutPage) {
       f.style.transform = f.dataset.baseTf;
     });
   }
+  // Write one face's lines. A line with nothing to say on this face is taken out
+  // of the layout entirely rather than left standing as a blank gap.
+  function applySlide(s) {
+    const put = (el, text) => {
+      el.textContent = text;
+      el.classList.toggle('is-empty', !text);
+    };
+    put(leftTitle, s.lt);
+    put(leftBody, s.lb);
+    put(rightLabel, s.rl);
+    put(rightTitle, s.rt);
+    if (s.lines) {
+      // one unbreakable span per line, so the breaks are the ones in the layout
+      // rather than wherever this column's width happens to fall
+      rightBody.replaceChildren(...s.lines.map((t) => {
+        const sp = document.createElement('span');
+        sp.className = 'bio-line';
+        sp.textContent = t;
+        return sp;
+      }));
+      rightBody.classList.remove('is-empty');
+    } else {
+      put(rightBody, s.rb);
+    }
+    rightBody.classList.toggle('is-long', !!s.long);
+    if (cvLink) cvLink.classList.toggle('is-empty', !s.cv);
+  }
+
+  /* On a phone the page stacks into three rows inside a fixed 100vh panel, and
+     the cube gets whatever height the two copy blocks leave over. The faces no
+     longer carry copy of a similar length - the Designer bio runs to fifteen
+     lines, the Resume face is one link - so the cube row grew and shrank as the
+     roll went past each face. And the cube's radius is only re-measured on
+     resize, so a zone that changed size under it made the faces stop meeting.
+     Reserve the tallest each column ever gets, once per layout: write every
+     face's lines in, measure, put back exactly what was showing. It happens in
+     one synchronous turn, so nothing is painted in between. Side by side on
+     desktop the columns do not share a row with the cube, so it stands down. */
+  const STACKED = window.matchMedia ? window.matchMedia('(max-width: 900px)') : null;
+  const copyL = leftTitle.closest('.about-copy');
+  const copyR = rightBody.closest('.about-copy');
+  /* The bio is set three sizes up, and on a big screen it fits as it is. But
+     this is a fixed 100vh panel - text that runs past its bottom edge cannot be
+     scrolled to - and the column beside the cube is only ~256px wide on a
+     1280x720 laptop, where the bio at full size came out 693px tall against
+     570px of room: 103px of it hung off the bottom of the screen, and the
+     overflowing row pushed the cube 72px down on that face only. On a phone
+     it squeezed the cube to 81px wide.
+     So the size is a ceiling, not a promise: step the bio down half a pixel at
+     a time until its column fits the room it actually has, and never below
+     the column's ordinary body size. On a phone that room is what
+     is left once the cube keeps at least CUBE_MIN_SHARE of the panel. */
+  const stick = copyR ? copyR.closest('.about-stick') : null;
+  const CUBE_MIN_SHARE = 0.36;
+  function reserveCopyHeight() {
+    if (!copyL || !copyR || !stick) return;
+    copyL.style.minHeight = '';
+    copyR.style.minHeight = '';
+    rightBody.style.removeProperty('--bio-size');
+    const stacked = !!(STACKED && STACKED.matches);
+    const els = [leftTitle, leftBody, rightLabel, rightTitle, rightBody, cvLink].filter(Boolean);
+    // innerHTML, not textContent: the bio is made of line spans
+    const saved = els.map((el) => [el.innerHTML, el.className]);
+
+    const cs = window.getComputedStyle(stick);
+    const rowH = stick.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const gap = parseFloat(cs.rowGap) || 0;
+
+    /* Heights are read unrounded and the reservation rounded UP. offsetHeight
+       floors, and Arial's line boxes land on fractions (the bio block is
+       329.375px): a floored reservation came out a third of a pixel short on
+       exactly the face that needed it most, the cube row took up the slack,
+       and the cube changed width by a pixel from one face to the next. */
+    const tall = (el) => el.getBoundingClientRect().height;
+    let hL = 0;
+    slides.forEach((sl) => { applySlide(sl); hL = Math.max(hL, tall(copyL)); });
+
+    const budget = stacked ? rowH - hL - gap * 2 - rowH * CUBE_MIN_SHARE : rowH;
+    const bio = slides.find((sl) => sl.long);
+    if (bio) {
+      applySlide(bio);
+      const ceil = parseFloat(window.getComputedStyle(rightBody).fontSize) || 0;
+      // the floor is the column's ordinary body size (10px, 9px on short phones):
+      // squeezed as far as it can go, the bio is never smaller than before
+      const floor = Math.min(ceil, parseFloat(window.getComputedStyle(leftBody).fontSize) || ceil);
+      let size = ceil;
+      // the lines cannot wrap any more, so the column has to fit them across
+      // as well as down: too wide shrinks the type just as too tall does
+      const tooWide = () => rightBody.scrollWidth > rightBody.clientWidth + 1;
+      while ((tall(copyR) > budget || tooWide()) && size - 0.5 >= floor) {
+        size -= 0.5;
+        rightBody.style.setProperty('--bio-size', size + 'px');
+      }
+    }
+
+    let hR = 0;
+    if (stacked) slides.forEach((sl) => { applySlide(sl); hR = Math.max(hR, tall(copyR)); });
+
+    els.forEach((el, k) => { el.innerHTML = saved[k][0]; el.className = saved[k][1]; });
+    if (stacked) {
+      copyL.style.minHeight = Math.ceil(hL) + 'px';
+      copyR.style.minHeight = Math.ceil(hR) + 'px';
+    }
+  }
+  reserveCopyHeight();
   layoutCube(true);
+  // the web font arriving re-wraps the bio, so measure again once it has
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { reserveCopyHeight(); layoutCube(); renderAbout(); });
+  }
 
   function updateText(i) {
     if (i === activeIndex) return;
     activeIndex = i;
 
-    const textEls = [leftTitle, leftBody, rightLabel, rightTitle, rightBody];
+    const textEls = [leftTitle, leftBody, rightLabel, rightTitle, rightBody, cvLink].filter(Boolean);
     textEls.forEach(el => el.classList.add('text-fade-out'));
 
     setTimeout(() => {
-      const s = slides[i];
-      leftTitle.textContent = s.lt;
-      leftBody.textContent = s.lb;
-      rightLabel.textContent = s.rl;
-      rightTitle.textContent = s.rt;
-      rightBody.textContent = s.rb;
-      count.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(N_FACES).padStart(2, '0');
+      applySlide(slides[i]);
+      // no face counter on this page any more; the rail on the right still counts
+      if (count) count.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(N_FACES).padStart(2, '0');
       textEls.forEach(el => el.classList.remove('text-fade-out'));
     }, 120);
   }
@@ -291,6 +421,7 @@ if (aboutPage) {
     // a real resize (rotation, window drag) resyncs the held height; a URL-bar
     // nudge in the middle of a scroll does not
     if (w !== lastVW || !scrolling) { lastVW = w; vhRef = window.innerHeight; }
+    reserveCopyHeight();
     layoutCube();
     renderAbout();
   }
@@ -1359,23 +1490,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const ring = document.getElementById('reelRing');
   if (!ring) return;
 
-  /* `desc` and `tags` are the two lines under the title and the three words in
+  /* `bg` is the picture a frame is filled with and `bgPos` which part of it
+     stays in view once it has been cut to the frame's shape - the same value
+     goes to CSS object-position and to the reflection, so the water shows the
+     part of the picture the frame shows. 3D/Video has none and stays
+     plain.
+     `desc` and `tags` are the two lines under the title and the three words in
      the corner of a resting frame. They are copy, not structure - written to
      fit the layout, and meant to be replaced with the real words. */
   const WORKS = [
-    { name: 'Arachnid',         role: 'Photography',      img: 'images/spider-bw.jpg',      caption: 'Experience Design',
+    { name: 'Arachnid',         role: 'Photography',      img: 'images/spider-bw.jpg',      caption: 'Experience Design', link: 'experience-design.html',
+      bg: 'images/ex-works.png',              bgPos: '50% 50%',
       desc: 'Interaction studies', years: '2024 — 2026', tags: ['Interactions', 'Products', 'And ideas'] },
     { name: 'Jurassic Era',     role: 'Exhibition',       img: 'images/dino-01.jpg',        caption: '3D/Video',
       desc: 'Motion and volume',   years: '2024 — 2026', tags: ['Frames', 'Depth', 'Movement'] },
     { name: 'Fossil Structure', role: 'Visual Study',     img: 'images/dino-02.jpg',        caption: 'Photography', link: 'photography.html',
+      bg: 'images/spider-bw.jpg',             bgPos: '50% 50%',
       desc: 'Thirty-four frames',  years: '2024 — 2026', tags: ['Moments', 'Perspectives', 'Stories'] },
     { name: 'Night Mirror',     role: 'Self Portrait',    img: 'images/about-user-01.png',  caption: 'Poster', link: 'poster.html',
+      // 15%, not centre: centred, the cover crop took the T off TRUNG THU
+      bg: 'images/trungthu-works-poster.png', bgPos: '15% 50%',
       desc: 'Visual experiments',  years: '2024 — 2026', tags: ['Paper', 'Type', 'Colour'] },
     { name: 'Fogged Glass',     role: 'Photography',      img: 'images/about-user-02.png',  caption: 'Typography', link: 'typography.html',
+      // 0%: the Esquire wordmark runs past the right edge of the scan already,
+      // so the crop is spent on the right and the E stays whole
+      bg: 'images/book/p02.jpg',              bgPos: '0% 50%',
       desc: 'Letterform studies',  years: '2024 — 2026', tags: ['Letters', 'Layouts', 'Expressions'] },
     { name: 'Thermal Study',    role: 'Experiment',       img: 'images/about-user-03.png',  caption: 'Calendar', link: 'calendar.html',
+      bg: 'images/calendar-works.gif',        bgPos: '50% 50%',
       desc: 'Twelve months',       years: '2024 — 2026', tags: ['Days', 'Grids', 'Seasons'] },
     { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html',
+      bg: 'images/digital-art-05.png',        bgPos: '18% 50%',
       desc: 'Drawn and vectored',  years: '2024 — 2026', tags: ['Pixels', 'Brushes', 'Worlds'] }
   ];
   const N = WORKS.length;
@@ -1408,9 +1553,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const NUM_START = Math.max(0, WORKS.findIndex((w) => w.name === 'Night Mirror'));
 
   const cards = [];
+  const bgImgs = [];   // by frame index; the water reads these for its reflections
   WORKS.forEach((w, wi) => {
     const c = document.createElement('div');
     c.className = 'reel-card';
+
+    if (w.bg) {
+      /* The frame's picture. An <img> rather than a CSS background so it can
+         decode off the main thread and so object-fit does the fitting: cover
+         fills the frame edge to edge whatever shape the file is. The portrait
+         pieces lose a sliver at the sides; the two landscape ones give up about
+         half their width, and bgPos says which half.
+         It is the bottom of the frame's own stack - under the shade, under the
+         water the cursor stirs, under the words - so nothing that already
+         happens on a frame changes, it just happens over a picture. */
+      c.classList.add('has-bg');
+      const im = document.createElement('img');
+      im.className = 'reel-card-bg';
+      im.alt = '';
+      im.decoding = 'async';
+      im.draggable = false;
+      if (w.bgPos) im.style.objectPosition = w.bgPos;
+      im.src = w.bg;
+      c.appendChild(im);
+      const shade = document.createElement('div');
+      shade.className = 'reel-card-shade';
+      c.appendChild(shade);
+      bgImgs[wi] = im;
+    }
 
     if (w.caption) {
       /* Everything written on a frame lives in one element, and that one
@@ -1697,6 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const WOBBLE_DEEP = 7.0;
   const SURFACE_ALPHA = 0.038;    // the sheet of light on the plane itself
   let REF_H = 0;
+  let REF_SURF = 0;        // canvas y where the open surface begins
   // the two side edges of one reflection, kept between ticks so the loop is
   // not handing the collector four arrays a frame
   const edgeLX = [], edgeLY = [], edgeRX = [], edgeRY = [];
@@ -1732,6 +1903,7 @@ document.addEventListener('DOMContentLoaded', () => {
        the surface is not optional: without it the wash filled the whole canvas
        and hung between the frames like fog. */
     const base = CARD_H * 0.5 * FRONT_MAG * 0.78;
+    REF_SURF = base;
     const b = Math.max(0, Math.min(0.96, base / REF_H));
     const g = rctx.createLinearGradient(0, 0, 0, REF_H);
     g.addColorStop(0, 'rgba(255,255,255,0)');
@@ -1742,12 +1914,149 @@ document.addEventListener('DOMContentLoaded', () => {
     refGrad = g;
   }
 
-  /* Two slow waves, and an amplitude that starts at nothing. `d` is how deep
-     into the water this part of the reflection is, 0 at the surface. */
-  function wobble(y, T, d) {
+  /* ---- what the water gives back of a picture --------------------------------
+     A frame with a picture in it has to reflect the picture, or the water is
+     showing a grey slab under a poster. Each picture is cut to the frame's own
+     shape once - cover, at the same bgPos the <img> uses - and stored upside
+     down, so row 0 of the texture is the picture's foot, the row that touches
+     the water. The strips below then map it with one affine transform each:
+     a strip is a thin quad with vertical sides, which an affine map covers to
+     well under a pixel, and its two edges carry their own heights so the
+     picture foreshortens with the frame instead of being pasted on flat.
+     An animated picture is re-cut a few times a second while it is in view, so
+     its reflection keeps moving with it; a still one is cut once. */
+  const TEX_W = 240;
+  const TEX_ANIM_MS = 160;
+  const texCanvases = [];
+  const texPatterns = [];
+  const texStamp = [];
+  const texMatrix = (typeof DOMMatrix === 'function') ? new DOMMatrix() : null;
+  const PATTERN_TF = !!texMatrix && typeof CanvasPattern !== 'undefined' &&
+                     typeof CanvasPattern.prototype.setTransform === 'function';
+
+  function bgFraction(pos) {
+    const m = String(pos || '').match(/(-?[\d.]+)%\s+(-?[\d.]+)%/);
+    return m ? [parseFloat(m[1]) / 100, parseFloat(m[2]) / 100] : [0.5, 0.5];
+  }
+
+  function texHeight() { return Math.round(TEX_W * CARD_RATIO); }
+
+  /* The picture zooms and drifts under the cursor (see .reel-card-bg in the
+     stylesheet), so its reflection has to as well - a reflection that holds
+     still while the thing it reflects moves is exactly the mismatch the water
+     was rebuilt to get rid of. CSS does the easing for the <img>; this follows
+     the same targets with an exponential of about the same feel (the zoom's
+     620ms curve settles like tau 150ms, the drift's 260ms like tau 65ms) so the
+     two travel together. */
+  const BG_ZOOM = 1.08;      // keep in step with .reel-card-bg:hover scale
+  const BG_DRIFT = 0.025;    // ...and with its translate, as a fraction of the frame
+  let hoverOn = false;
+  let hoverTX = 0;
+  let hoverTY = 0;
+  let bgLastT = 0;
+  let bgK = 1, bgX = 0, bgY = 0;   // bgMotion's answer for the frame just asked about
+  const bgZoom = [], bgSX = [], bgSY = [];
+  function bgMotion(i, dt) {
+    const on = hoverOn && hoverFX && !refStill && i === frontIdx;
+    const tz = on ? BG_ZOOM : 1;
+    const tx = on ? -hoverTX * BG_DRIFT : 0;
+    const ty = on ? -hoverTY * BG_DRIFT : 0;
+    const az = dt ? 1 - Math.exp(-dt / 150) : 1;
+    const at = dt ? 1 - Math.exp(-dt / 65) : 1;
+    const z0 = bgZoom[i] === undefined ? 1 : bgZoom[i];
+    const x0 = bgSX[i] || 0, y0 = bgSY[i] || 0;
+    bgK = bgZoom[i] = z0 + (tz - z0) * az;
+    bgX = bgSX[i] = x0 + (tx - x0) * at;
+    bgY = bgSY[i] = y0 + (ty - y0) * at;
+  }
+
+  function buildTexture(i) {
+    const im = bgImgs[i];
+    if (!rctx || !im || !im.complete || !im.naturalWidth) return null;
+    const TH = texHeight();
+    let cv = texCanvases[i];
+    if (!cv) { cv = document.createElement('canvas'); texCanvases[i] = cv; }
+    if (cv.width !== TEX_W || cv.height !== TH) { cv.width = TEX_W; cv.height = TH; }
+    const g = cv.getContext('2d');
+    const W = im.naturalWidth, H = im.naturalHeight;
+    // the same arithmetic as object-fit: cover
+    let cw, ch;
+    if (H / W < TH / TEX_W) { ch = H; cw = H * TEX_W / TH; }
+    else { cw = W; ch = W * TH / TEX_W; }
+    const f = bgFraction(WORKS[i] && WORKS[i].bgPos);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, TEX_W, TH);
+    g.setTransform(1, 0, 0, -1, 0, TH);            // upside down: row 0 is the foot
+    g.drawImage(im, (W - cw) * f[0], (H - ch) * f[1], cw, ch, 0, 0, TEX_W, TH);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    texPatterns[i] = rctx.createPattern(cv, 'no-repeat');
+    texStamp[i] = performance.now();
+    return texPatterns[i];
+  }
+
+  function texFor(i, now) {
+    if (!PATTERN_TF || !bgImgs[i]) return null;
+    const pat = texPatterns[i];
+    const moving = /\.gif(\?|$)/i.test((WORKS[i] && WORKS[i].bg) || '');
+    if (!pat || (moving && now && now - (texStamp[i] || 0) > TEX_ANIM_MS)) {
+      return buildTexture(i) || pat || null;
+    }
+    return pat;
+  }
+
+  /* ---- the breeze -----------------------------------------------------------
+     A light wind across the water, blowing from the back left towards the
+     front right. It never stops and never turns round, it just freshens and
+     eases: its speed is a base plus two slow cosines that never add up to more
+     than the base, so it varies between a tenth of that speed and nearly
+     double.
+     Nothing here keeps state between frames. The distance the wind has pushed
+     the water is the integral of that speed, written out - so the ripples are a
+     pure function of the clock and move at exactly the same pace whether the
+     loop is drawing at 30fps, at 60 during a spin, or has just been woken from
+     a hidden tab. `gust` is the same speed rescaled to 0..1. */
+  const WIND_SPEED = 26;             // px/s across the nearest water, on average
+  let WIND_DIST = 0;
+  let WIND_GUST = 0.5;
+  function windAt(ms) {
+    const t = ms / 1000;
+    WIND_DIST = WIND_SPEED * (t +
+      0.55 * Math.sin(0.21 * t) / 0.21 +
+      0.35 * (Math.sin(0.083 * t + 1.1) - Math.sin(1.1)) / 0.083);
+    const g = 0.5 + 0.5 * (0.55 * Math.cos(0.21 * t) + 0.35 * Math.cos(0.083 * t + 1.1)) / 0.9;
+    WIND_GUST = g < 0 ? 0 : g > 1 ? 1 : g;
+  }
+
+  /* How far the reflection is pushed sideways at (x, y), `d` deep into the
+     water - still 0 at the surface, where the reflection meets its frame.
+     The first wave is the wind's: its crests run diagonally, and the breeze
+     carries them down and to the right, so each strip's two edges catch it at
+     different moments and the reflection shears a little as it passes. The
+     second is the water's own slow sway. A gust roughens both. */
+  function wobble(x, y, T, d) {
     if (d <= 0) return 0;
-    return (Math.sin(y * 0.055 + T) * 0.62 + Math.sin(y * 0.019 - T * 0.73) * 0.38) *
-           WOBBLE_DEEP * d;
+    const w = WIND_DIST * 0.02;
+    return (Math.sin(y * 0.055 + x * 0.011 - w) * 0.62 + Math.sin(y * 0.019 - T * 0.73) * 0.38) *
+           WOBBLE_DEEP * d * (0.75 + 0.5 * WIND_GUST);
+  }
+
+  /* Cat's paws: short, faint crests the breeze drives across the open water.
+     Each one has a fixed place in depth (far ones sit near the top of the water
+     and are small and slow, near ones low, longer and quicker - perspective),
+     a length, a starting point and a rhythm on which it catches the light and
+     loses it again. The field is seeded once; where each crest is at any
+     moment comes from the wind's distance, not from stored positions. */
+  const CRESTS = 54;
+  const crest = new Float32Array(CRESTS * 4);
+  {
+    let seed = 20260910;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (let q = 0; q < CRESTS; q++) {
+      crest[q * 4] = rnd();            // depth, 0 far .. 1 near
+      crest[q * 4 + 1] = rnd();        // length
+      crest[q * 4 + 2] = rnd();        // starting point across the water
+      crest[q * 4 + 3] = rnd();        // how quickly it glints
+    }
   }
 
   function reflectDraw(now) {
@@ -1758,6 +2067,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refGrad) { rctx.fillStyle = refGrad; rctx.fillRect(0, 0, vw, REF_H); }
 
     const T = now * 0.0011;
+    windAt(now);
+    const dtBg = (now && bgLastT) ? Math.min(100, Math.max(0, now - bgLastT)) : 0;
+    if (now) bgLastT = now;
     for (let i = 0; i < cards.length; i++) {
       const pres = PRES[i] || 0;
       if (pres < 0.02) continue;
@@ -1815,6 +2127,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const fadeL = Math.max(60, vh - footL);
       const fadeR = Math.max(60, vh - footR);
       const dv = REFLECT_STRIP / Math.max(1, hL + hR);
+      const pat = texFor(i, now);
+      const TH = pat ? texHeight() : 0;
+      if (pat) bgMotion(i, dtBg); else { bgK = 1; bgX = 0; bgY = 0; }
 
       // the frame's lower border, given back. No sway: this is the waterline.
       rctx.strokeStyle = 'rgba(255,255,255,' + (0.12 * pres).toFixed(4) + ')';
@@ -1840,15 +2155,44 @@ document.addEventListener('DOMContentLoaded', () => {
         if (alpha < 0.004) break;
         // each edge sways on its own phase and by its own depth, so the strip
         // shears a little instead of sliding as a rigid block
-        const wl = wobble(y0l, T, dL);
-        const wr = wobble(y0r, T, dR);
-        rctx.fillStyle = 'rgba(' + REFLECT_TINT + ',' + alpha.toFixed(4) + ')';
+        const wl = wobble(xL, y0l, T, dL);
+        const wr = wobble(xR, y0r, T, dR);
+        if (pat) {
+          /* texture (tx, ty) -> canvas (x, y) for this strip. Row ty = v*TH of
+             the upside-down texture is the part of the picture that sits v of
+             the way up the frame; across the strip x runs edge to edge, y
+             follows the slant between the two feet, and down the strip each
+             texture row spans (hL + hR) / TH screen pixels - the average of the
+             two edges' own rates, which differ by far less than a pixel over
+             one strip. */
+          /* With the picture zoomed by k about the frame's centre and moved by
+             (sx, sy) of the frame, a point u across the picture sits at
+             0.5 + (u - 0.5)k + sx across the frame, and the same again up it
+             with sy counted the other way - down the screen is towards the foot,
+             which in the water is towards the waterline. At k = 1, s = 0 this
+             is exactly the unzoomed mapping. */
+          const xl = xL + wl, xr = xR + wr;
+          const W = xr - xl, Hs = hL + hR, slant = y0r - y0l;
+          const off = 0.5 - 0.5 * bgK;
+          texMatrix.a = bgK * W / TEX_W;
+          texMatrix.b = bgK * slant / TEX_W;
+          texMatrix.c = 0;
+          texMatrix.d = bgK * Hs / TH;
+          texMatrix.e = xl + (off + bgX) * W;
+          texMatrix.f = (y0l - CY) + (off + bgX) * slant + (off - bgY - v) * Hs;
+          pat.setTransform(texMatrix);
+          rctx.globalAlpha = alpha;
+          rctx.fillStyle = pat;
+        } else {
+          rctx.fillStyle = 'rgba(' + REFLECT_TINT + ',' + alpha.toFixed(4) + ')';
+        }
         rctx.beginPath();
         rctx.moveTo(xL + wl, y0l - CY);
         rctx.lineTo(xR + wr, y0r - CY);
-        rctx.lineTo(xR + wobble(y1r, T, dR), y1r - CY + 0.6);
-        rctx.lineTo(xL + wobble(y1l, T, dL), y1l - CY + 0.6);
+        rctx.lineTo(xR + wobble(xR, y1r, T, dR), y1r - CY + 0.6);
+        rctx.lineTo(xL + wobble(xL, y1l, T, dL), y1l - CY + 0.6);
         rctx.fill();
+        if (pat) rctx.globalAlpha = 1;
         edgeLX.push(xL + wl); edgeLY.push(y0l - CY);
         edgeRX.push(xR + wr); edgeRY.push(y0r - CY);
       }
@@ -1876,17 +2220,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    /* A few long, very faint glints drifting across the open surface, so the
-       water is still there between the frames rather than only under them. */
-    for (let k = 0; k < 4; k++) {
-      const ph = k * 1.73;
-      const gy = REF_H * (0.30 + 0.15 * k) + Math.sin(T * 0.47 + ph) * 7;
-      if (gy < 0 || gy > REF_H) continue;
-      const gw = vw * (0.20 + 0.05 * k);
-      const gx = halfW + Math.sin(T * 0.29 + ph) * vw * 0.24 - gw * 0.5;
-      rctx.fillStyle = 'rgba(255,255,255,' +
-        (0.016 + 0.007 * Math.sin(T * 0.83 + ph)).toFixed(4) + ')';
-      rctx.fillRect(gx, gy, gw, 1.4);
+    /* The breeze on the open water. This replaces four long glints that only
+       slid back and forth: those read as light on glass, not as wind. */
+    const band = REF_H - REF_SURF;
+    if (band > 12) {
+      const span = vw + 240;           // crests leave on the right, come back on the left
+      for (let q = 0; q < CRESTS; q++) {
+        const o = q * 4;
+        const r = crest[o];
+        const tw = Math.sin(T * (0.9 + 1.4 * crest[o + 3]) + crest[o + 2] * 6.2832);
+        if (tw <= 0) continue;           // between glints
+        const sc = 0.35 + 0.65 * r;      // perspective: the near water is bigger and quicker
+        const a = (0.014 + 0.05 * WIND_GUST) * sc * tw;
+        if (a < 0.003) continue;
+        const y = REF_SURF + 6 + Math.pow(r, 1.7) * (band - 12);
+        const len = (14 + 70 * crest[o + 1]) * sc * (0.55 + 0.9 * WIND_GUST);
+        let x = (crest[o + 2] * span + WIND_DIST * sc) % span;
+        if (x < 0) x += span;
+        rctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(4) + ')';
+        rctx.fillRect(x - 120, y, len, 0.8 + 0.9 * sc);
+      }
     }
   }
 
@@ -1918,6 +2271,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refRAF === null) { refLast = 0; refRAF = window.requestAnimationFrame(reflectTick); }
   }
   document.addEventListener('visibilitychange', reflectSync);
+  bgImgs.forEach((im, i) => {
+    if (!im) return;
+    im.addEventListener('load', () => {
+      texPatterns[i] = null;
+      if (refActive) reflectDraw(performance.now());
+    });
+  });
 
   /* ---- the word behind the reel -----------------------------------------
      The frame at the centre also writes its name across the back wall, huge
@@ -2137,6 +2497,19 @@ document.addEventListener('DOMContentLoaded', () => {
     CARD_W = w;
     CARD_H = h;
     PERSP = w * PERSPECTIVE_PER_W;
+    /* The side arrows sit in the margin outside the frames. On a wide screen
+       the stylesheet's own inset puts them where they were asked for; once the
+       frames reach towards the edges (about 1100px and below) that inset would
+       put the arrows on top of the side frames - 39px over them at 1024 - so
+       they move out into whatever margin is left, and only sit over a frame
+       when there is no margin at all (a phone, where the side frames already
+       run off the screen). */
+    {
+      const sideGap = (vw - w * SPREAD3_PER_W) / 2;       // screen edge to the side frame
+      const preferred = Math.min(96, Math.max(12, vw * 0.045));
+      const inset = Math.max(6, Math.min(preferred, sideGap - 56 - 12));
+      document.documentElement.style.setProperty('--reel-arrow-inset', inset.toFixed(1) + 'px');
+    }
     if (scene) {
       scene.style.perspective = PERSP.toFixed(0) + 'px';
       /* Carry the ring down by DROP. Padding moves the flex centre by half of
@@ -2462,18 +2835,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // since that is the only card CSS lets the pointer reach.
     if (hoverFX && !dragging && e.target === cards[frontIdx]) {
       waterStroke(e.offsetX, e.offsetY);
-      if (frontTitle) {
-        // -1..1 across the frame. Published as bare numbers; the CSS decides
-        // what they mean and, crucially, only reads them while the frame is
-        // hovered - so letting go unwinds the lean through the same easing
-        // with nothing to reset here.
-        const nx = (e.offsetX / Math.max(1, CARD_W - FRAME_BORDER * 2)) * 2 - 1;
-        const ny = (e.offsetY / Math.max(1, CARD_H - FRAME_BORDER * 2)) * 2 - 1;
-        frontTitle.style.setProperty('--tx', (nx < -1 ? -1 : nx > 1 ? 1 : nx).toFixed(3));
-        frontTitle.style.setProperty('--ty', (ny < -1 ? -1 : ny > 1 ? 1 : ny).toFixed(3));
-      }
-    } else if (lastWX >= 0) {
-      lastWX = lastWY = -1;   // left the frame: next entry starts a fresh stroke
+      // -1..1 across the frame. Published as bare numbers; the CSS decides
+      // what they mean and, crucially, only reads them while the frame is
+      // hovered - so letting go unwinds the effect through the same easing
+      // with nothing to reset here.
+      /* Set on the FRAME, not on the words. Custom properties only inherit
+         downwards, and they used to live on .reel-card-body - which the words
+         could read and the picture, a sibling of it, never could. That is why
+         the words zoomed and leant under the cursor while the picture behind
+         them did not move at all. On the frame, both inherit them. */
+      const nx = (e.offsetX / Math.max(1, CARD_W - FRAME_BORDER * 2)) * 2 - 1;
+      const ny = (e.offsetY / Math.max(1, CARD_H - FRAME_BORDER * 2)) * 2 - 1;
+      hoverTX = nx < -1 ? -1 : nx > 1 ? 1 : nx;
+      hoverTY = ny < -1 ? -1 : ny > 1 ? 1 : ny;
+      hoverOn = true;
+      const fc = cards[frontIdx];
+      fc.style.setProperty('--tx', hoverTX.toFixed(3));
+      fc.style.setProperty('--ty', hoverTY.toFixed(3));
+    } else {
+      hoverOn = false;
+      if (lastWX >= 0) lastWX = lastWY = -1;   // left the frame: next entry starts a fresh stroke
     }
     if (!dragging && !axisPending) return;
     const dx = e.clientX - dragStartX;
@@ -2551,6 +2932,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   reel.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
+  // leaving the window from over a frame sends no move that says so
+  document.documentElement.addEventListener('pointerleave', () => { hoverOn = false; });
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerCancel);
 

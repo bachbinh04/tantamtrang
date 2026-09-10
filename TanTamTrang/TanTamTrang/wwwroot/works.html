@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TAN — Works</title>
   <script>try{var d=document.documentElement;if(sessionStorage.getItem('hwTear')==='1'){d.classList.add('hw-tear-pending');sessionStorage.removeItem('hwTear');}if(sessionStorage.getItem('wcSplit')==='1'){d.classList.add('wc-split-pending');sessionStorage.removeItem('wcSplit');}if(sessionStorage.getItem('ptEnter')==='1'){d.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=96">
+  <link rel="stylesheet" href="style.css?v=113">
 </head>
 <body class="works-page">
 
@@ -98,12 +98,15 @@
 <div class="reel-stage" aria-hidden="true"></div>
 <canvas class="reel-reflect" id="reelReflect" aria-hidden="true"></canvas>
 
+<!-- The arrows stand on either side of the frames rather than inside the
+     pager: a position:fixed child of the pager would be placed against the
+     pager itself, because its translateX() makes it the containing block. -->
+<button class="reel-arrow reel-arrow-prev" type="button" data-step="-1" aria-label="Previous work">&#8249;</button>
+<button class="reel-arrow reel-arrow-next" type="button" data-step="1" aria-label="Next work">&#8250;</button>
 <nav class="reel-pager" id="reelPager" aria-label="Works">
-  <button class="reel-arrow" type="button" data-step="-1" aria-label="Previous work">&#8249;</button>
   <span class="reel-dots" id="reelDots"></span>
-  <button class="reel-arrow" type="button" data-step="1" aria-label="Next work">&#8250;</button>
 </nav>
 
-<script src="script.js?v=96"></script>
+<script src="script.js?v=113"></script>
 </body>
 </html>
