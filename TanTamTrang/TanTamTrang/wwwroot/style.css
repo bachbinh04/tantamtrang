@@ -758,6 +758,48 @@ html.lb-lock body{ overflow:hidden; }
   font:10px var(--mono);
   letter-spacing:.08em;
 }
+/* The two CV buttons on the Resume face. Proper buttons rather than the
+   column's underlined 10px links, which were easy to miss: download is the
+   solid one, view the outlined one beside it. They wrap onto two rows when the
+   column is too narrow to hold both side by side. */
+.about-cv{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:26px;
+}
+.about-copy .about-cv .cv-btn{
+  display:inline-flex;
+  align-items:center;
+  margin:0;
+  padding:13px 20px;
+  border:1px solid rgba(255,255,255,.8);
+  border-radius:999px;
+  font:11px/1 var(--mono);
+  letter-spacing:.16em;
+  white-space:nowrap;
+  transition:background-color .3s ease, color .3s ease, border-color .3s ease;
+}
+.about-copy .about-cv .cv-view{
+  color:#fff;
+  background:transparent;
+}
+.about-copy .about-cv .cv-download{
+  color:#000;
+  background:#fff;
+  border-color:#fff;
+}
+.about-copy .about-cv .cv-view:hover,
+.about-copy .about-cv .cv-view:focus-visible{
+  color:#000;
+  background:#fff;
+}
+.about-copy .about-cv .cv-download:hover,
+.about-copy .about-cv .cv-download:focus-visible{
+  color:#fff;
+  background:transparent;
+}
 /* A line this face has nothing for is removed, not left as a blank gap that
    pushes the rest of the column off centre. */
 .about-copy .is-empty{
@@ -1072,6 +1114,10 @@ html.lb-lock body{ overflow:hidden; }
   }
   .about-copy.right h2,.about-copy.right p{
     margin-left:0;
+  }
+  /* stacked, the right column reads left-aligned, so the buttons do too */
+  .about-cv{
+    justify-content:flex-start;
   }
   .progress-rail{display:none}
   .contact-grid{
@@ -1815,6 +1861,9 @@ body.home-video-body::-webkit-scrollbar{
     font-size:var(--bio-size, 15px);   /* six up from 9px here too */
   }
   .about-copy a{
+    margin-top:14px;
+  }
+  .about-cv{
     margin-top:14px;
   }
   .cube-zone{
