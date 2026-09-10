@@ -2043,8 +2043,10 @@ body.home-video-body::-webkit-scrollbar{
   to  { opacity:1; transform:none; }
 }
 
-/* The ring the frames stand on - it follows them down, or it would be cutting
-   across their middles instead of sitting under them. */
+/* The rim of the pool. It used to be the only thing the frames stood on, so it
+   carried the weight on its own; now there is water in it, and a line at .075
+   read as a stray stroke drawn across the reflections rather than as an edge
+   behind them. */
 .reel-stage{
   position:fixed;
   left:50%;
@@ -2052,10 +2054,34 @@ body.home-video-body::-webkit-scrollbar{
   width:min(1460px,94vw);
   height:min(300px,25vh);
   transform:translate(-50%,-50%);
-  border:1px solid rgba(255,255,255,.075);
+  border:1px solid rgba(255,255,255,.042);
   border-radius:50%;
   z-index:5;
   pointer-events:none;
+}
+
+/* ---------------------------------------------------------------------
+   The water the frames stand in. One canvas across the bottom of the
+   screen, above the wall word and below the frames themselves - the
+   reflections live entirely under each frame's foot, so they never have to
+   paint over anything.
+   Drawn at half resolution and scaled back up: a reflection is the one
+   thing in the picture that is allowed to be soft, and the browser's own
+   upscale does most of that for free.
+   --------------------------------------------------------------------- */
+.reel-reflect{
+  position:fixed;
+  left:0;
+  bottom:0;
+  width:100%;
+  z-index:6;                 /* over .reel-ghost (4) and .reel-stage (5) */
+  pointer-events:none;
+  filter:blur(1.4px);
+}
+@media(max-width:900px){
+  /* Same line as .reel-stage: below this the frames run off both edges and
+     there is no room under them for a surface to read as one. */
+  .reel-reflect{ display:none; }
 }
 
 /* Pager. */
@@ -2121,4 +2147,6 @@ body.home-video-body::-webkit-scrollbar{
   .wk-num,.wk-title,.wk-rule,.wk-desc,.wk-tags,.wk-explore{ transition:none; }
   .reel-card.is-front:hover .reel-card-body{ scale:1; transform:none; }
   .reel-ghost-word.is-in{ animation:none; opacity:1; }
+  /* The surface still reflects, it just stops moving - see reflectSync(). */
+  .reel-reflect{ filter:none; }
 }

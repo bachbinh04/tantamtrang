@@ -1665,6 +1665,260 @@ document.addEventListener('DOMContentLoaded', () => {
     lastWX = px; lastWY = py;
   }
 
+  /* ---- the water -----------------------------------------------------------
+     A still surface the frames stand in: a sheet of very faint light where
+     they meet it, one mirrored copy of each frame, and just enough movement
+     that it reads as liquid rather than as a mirror.
+
+     The cheap part is the geometry. A frame is a flat rectangle turned only
+     about the Y axis, so it projects to a trapezoid whose LEFT AND RIGHT EDGES
+     STAY VERTICAL - only their heights differ. Two edges to work out per frame
+     instead of four corners, and the mirrored copy lays down as strips between
+     them. None of it measures the DOM: the numbers come from the same values
+     that place the frame, so a frame and its reflection cannot drift apart.
+
+     The mirror line is each frame's own foot, not one line across the screen.
+     Frames further round the ring stand higher up the picture, and reflecting
+     them all about a single line would leave the near ones floating. */
+  const reflect = document.getElementById('reelReflect');
+  const rctx = reflect ? reflect.getContext('2d') : null;
+  const DEG = Math.PI / 180;
+  const REFLECT_SCALE = 0.5;      // canvas resolution against css pixels
+  const REFLECT_ALPHA = 0.34;     // how much of a frame the water gives back
+  const REFLECT_TINT = '46,46,46';
+  const REFLECT_STRIP = 6;        // css px per mirrored strip
+  const REFLECT_FPS = 30;         // the surface is nearly still; 60 buys nothing
+  const REFLECT_MIN_W = 901;      // matches the stylesheet's own cut-off
+  /* Sway, in px, at the deepest visible part of a reflection. It has to reach
+     ZERO at the waterline: that is the one place the reflection touches the
+     frame it belongs to, and any movement there detaches the two - the
+     reflection reads as a separate grey shape sliding about beneath the frame
+     instead of as the frame given back. */
+  const WOBBLE_DEEP = 7.0;
+  const SURFACE_ALPHA = 0.038;    // the sheet of light on the plane itself
+  let REF_H = 0;
+  // the two side edges of one reflection, kept between ticks so the loop is
+  // not handing the collector four arrays a frame
+  const edgeLX = [], edgeLY = [], edgeRX = [], edgeRY = [];
+  let refGrad = null;
+  let refRAF = null;
+  let refLast = 0;
+  let refActive = false;   // is there water on this screen at all
+  const refStill = !!(window.matchMedia &&
+                      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  function reflectAlloc() {
+    if (!rctx) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    /* The canvas starts at the frames' centre line rather than at any one
+       frame's foot: the feet sit at different heights and the highest of them
+       moves as the ring turns, so anchoring to one would mean resizing the
+       canvas mid-spin. Everything above the surface is simply never drawn. */
+    REF_H = Math.max(1, Math.round(vh - CY));
+    reflect.style.height = REF_H + 'px';
+    const cw = Math.max(1, Math.round(vw * REFLECT_SCALE));
+    const ch = Math.max(1, Math.round(REF_H * REFLECT_SCALE));
+    if (reflect.width !== cw || reflect.height !== ch) {
+      reflect.width = cw;
+      reflect.height = ch;
+    }
+    // draw in css pixels and let the canvas be half of them
+    rctx.setTransform(REFLECT_SCALE, 0, 0, REFLECT_SCALE, 0, 0);
+    /* Where the surface begins. The frontal frame's foot is the nearest point
+       of it, but the frames beside it stand further back and therefore HIGHER
+       up the picture - about four fifths of the way down - so the sheet has to
+       start there or their reflections would begin above the water.
+       A gradient pads its end stops outwards, so the transparent stop above
+       the surface is not optional: without it the wash filled the whole canvas
+       and hung between the frames like fog. */
+    const base = CARD_H * 0.5 * FRONT_MAG * 0.78;
+    const b = Math.max(0, Math.min(0.96, base / REF_H));
+    const g = rctx.createLinearGradient(0, 0, 0, REF_H);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(b, 'rgba(255,255,255,0)');
+    g.addColorStop(Math.min(1, b + 0.02), 'rgba(255,255,255,' + SURFACE_ALPHA.toFixed(4) + ')');
+    g.addColorStop(Math.min(1, b + (1 - b) * 0.34), 'rgba(255,255,255,' + (SURFACE_ALPHA * 0.4).toFixed(4) + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    refGrad = g;
+  }
+
+  /* Two slow waves, and an amplitude that starts at nothing. `d` is how deep
+     into the water this part of the reflection is, 0 at the surface. */
+  function wobble(y, T, d) {
+    if (d <= 0) return 0;
+    return (Math.sin(y * 0.055 + T) * 0.62 + Math.sin(y * 0.019 - T * 0.73) * 0.38) *
+           WOBBLE_DEEP * d;
+  }
+
+  function reflectDraw(now) {
+    if (!rctx || !REF_H) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const halfW = vw / 2;
+    rctx.clearRect(0, 0, vw, REF_H);
+    if (refGrad) { rctx.fillStyle = refGrad; rctx.fillRect(0, 0, vw, REF_H); }
+
+    const T = now * 0.0011;
+    for (let i = 0; i < cards.length; i++) {
+      const pres = PRES[i] || 0;
+      if (pres < 0.02) continue;
+      const s = SCL[i] || 1;
+      const rel = norm180(RING_ANGLE - i * STEP_DEG);
+      const a = rel * DEG, ca = Math.cos(a), sa = Math.sin(a);
+      const f = -rel * RING_FACE * DEG, cf = Math.cos(f), sf = Math.sin(f);
+      const hw = CARD_W * 0.5 * s, hh = CARD_H * 0.5 * s;
+
+      let xL = 0, hL = 0, xR = 0, hR = 0;
+      for (let k = 0; k < 2; k++) {
+        // one vertical edge of the frame, carried through the same transform
+        // list the stylesheet applies: scale, face-back, out to the ring,
+        // round by the ring's angle, then forward towards the camera
+        const x = k ? hw : -hw;
+        const X0 = x * cf, Z0 = -x * sf - RADIUS;
+        const X1 = X0 * ca + Z0 * sa;
+        const Z1 = -X0 * sa + Z0 * ca + FORWARD;
+        const m = PERSP / (PERSP - Z1);
+        if (m <= 0) { hL = 0; hR = 0; break; }
+        if (k) { xR = halfW + X1 * m; hR = hh * m; }
+        else   { xL = halfW + X1 * m; hL = hh * m; }
+      }
+      if (!hL || !hR) continue;
+      if (xR < xL) { const tx = xL, th = hL; xL = xR; hL = hR; xR = tx; hR = th; }
+
+      /* THE MIRROR. Each vertical edge is turned about ITS OWN foot, not about
+         one line drawn across the frame.
+
+         Reflecting in a flat horizontal surface leaves x and z untouched and
+         sends world height Y to 2*Yw - Y, so the reflected point keeps the very
+         same perspective factor m as the point it came from. Substitute that
+         back into the projection and it says: on screen, mirror about the line
+         CY + Yw*m. The two edges of a turned frame stand at different distances
+         and so carry different m - which means DIFFERENT MIRROR LINES, and each
+         edge's line lands exactly on that edge's own foot.
+         Averaging the two, as this did before, mirrors each edge about a line
+         that is not its own. The reflection then meets the frame on neither
+         side: it rides up over the foot at the near edge and hangs off it at
+         the far one, by half the difference between them. On the frames beside
+         the centre that is tens of pixels, and it is why the reflection did not
+         look like it belonged to the frame.
+
+         Mirrored about its own foot, an edge that runs from CY + h (foot) up to
+         CY - h (top) comes back running from CY + h down to CY + 3h. Same
+         height on screen as the frame - which is right, and not the same thing
+         as "the same height in the world": a flat mirror gives back exactly the
+         projected height it was given, at the same x. */
+      const footL = CY + hL, footR = CY + hR;
+      if (footL > vh && footR > vh) continue;
+      // Fresnel, near enough: the water gives most back where it is seen at a
+      // glancing angle - up near the frame - and least where you are looking
+      // straight down into it, at the bottom of the screen. That is also what
+      // keeps the reflection from being cut off by the edge of the viewport.
+      const fadeL = Math.max(60, vh - footL);
+      const fadeR = Math.max(60, vh - footR);
+      const dv = REFLECT_STRIP / Math.max(1, hL + hR);
+
+      // the frame's lower border, given back. No sway: this is the waterline.
+      rctx.strokeStyle = 'rgba(255,255,255,' + (0.12 * pres).toFixed(4) + ')';
+      rctx.lineWidth = 2;
+      rctx.beginPath();
+      rctx.moveTo(xL, footL - CY);
+      rctx.lineTo(xR, footR - CY);
+      rctx.stroke();
+
+      edgeLX.length = 0; edgeLY.length = 0; edgeRX.length = 0; edgeRY.length = 0;
+      for (let v = 0; v < 1; v += dv) {
+        const v2 = Math.min(1, v + dv);
+        const y0l = CY + hL * (1 + 2 * v);
+        const y0r = CY + hR * (1 + 2 * v);
+        const y1l = CY + hL * (1 + 2 * v2);
+        const y1r = CY + hR * (1 + 2 * v2);
+        const dL = (y0l - footL) / fadeL;
+        const dR = (y0r - footR) / fadeR;
+        const d = (dL + dR) * 0.5;
+        if (d >= 1) break;
+        const k = 1 - d;
+        const alpha = REFLECT_ALPHA * pres * k * k * Math.sqrt(k);
+        if (alpha < 0.004) break;
+        // each edge sways on its own phase and by its own depth, so the strip
+        // shears a little instead of sliding as a rigid block
+        const wl = wobble(y0l, T, dL);
+        const wr = wobble(y0r, T, dR);
+        rctx.fillStyle = 'rgba(' + REFLECT_TINT + ',' + alpha.toFixed(4) + ')';
+        rctx.beginPath();
+        rctx.moveTo(xL + wl, y0l - CY);
+        rctx.lineTo(xR + wr, y0r - CY);
+        rctx.lineTo(xR + wobble(y1r, T, dR), y1r - CY + 0.6);
+        rctx.lineTo(xL + wobble(y1l, T, dL), y1l - CY + 0.6);
+        rctx.fill();
+        edgeLX.push(xL + wl); edgeLY.push(y0l - CY);
+        edgeRX.push(xR + wr); edgeRY.push(y0r - CY);
+      }
+
+      /* The frame's own two sides, given back. Without them the reflection is
+         a soft grey mass that reads as a shadow; with them it reads as the
+         frame. They follow the same wobble as the strips they were collected
+         from, so the whole reflection sways as one piece, and the fade is a
+         gradient along the stroke rather than a stroke per strip. */
+      if (edgeLX.length > 1) {
+        const last = edgeLY.length - 1;
+        const ge = rctx.createLinearGradient(0, edgeLY[0], 0, edgeLY[last]);
+        ge.addColorStop(0, 'rgba(255,255,255,' + (0.10 * pres).toFixed(4) + ')');
+        ge.addColorStop(1, 'rgba(255,255,255,0)');
+        rctx.strokeStyle = ge;
+        rctx.lineWidth = 1.6;
+        rctx.beginPath();
+        rctx.moveTo(edgeLX[0], edgeLY[0]);
+        for (let q = 1; q <= last; q++) rctx.lineTo(edgeLX[q], edgeLY[q]);
+        rctx.stroke();
+        rctx.beginPath();
+        rctx.moveTo(edgeRX[0], edgeRY[0]);
+        for (let q = 1; q <= last; q++) rctx.lineTo(edgeRX[q], edgeRY[q]);
+        rctx.stroke();
+      }
+    }
+
+    /* A few long, very faint glints drifting across the open surface, so the
+       water is still there between the frames rather than only under them. */
+    for (let k = 0; k < 4; k++) {
+      const ph = k * 1.73;
+      const gy = REF_H * (0.30 + 0.15 * k) + Math.sin(T * 0.47 + ph) * 7;
+      if (gy < 0 || gy > REF_H) continue;
+      const gw = vw * (0.20 + 0.05 * k);
+      const gx = halfW + Math.sin(T * 0.29 + ph) * vw * 0.24 - gw * 0.5;
+      rctx.fillStyle = 'rgba(255,255,255,' +
+        (0.016 + 0.007 * Math.sin(T * 0.83 + ph)).toFixed(4) + ')';
+      rctx.fillRect(gx, gy, gw, 1.4);
+    }
+  }
+
+  function reflectTick(now) {
+    refRAF = window.requestAnimationFrame(reflectTick);
+    if (now - refLast < 1000 / REFLECT_FPS) return;   // a still surface does not need 60
+    refLast = now;
+    reflectDraw(now);
+  }
+
+  function reflectStop() {
+    if (refRAF !== null) { window.cancelAnimationFrame(refRAF); refRAF = null; }
+  }
+
+  /* The one place that decides whether the surface is moving. A hidden tab, a
+     screen too narrow for the frames to stand on anything, or a reader who has
+     asked for less movement all end the same way: the loop stops. Under
+     reduced motion the water is still drawn - it just holds one frame, redrawn
+     from render() as the ring turns. */
+  function reflectSync() {
+    if (!rctx) return;
+    if (window.innerWidth < REFLECT_MIN_W || document.hidden) {
+      refActive = false;
+      reflectStop();
+      return;
+    }
+    refActive = true;
+    if (refStill) { reflectStop(); reflectDraw(0); return; }
+    if (refRAF === null) { refLast = 0; refRAF = window.requestAnimationFrame(reflectTick); }
+  }
+  document.addEventListener('visibilitychange', reflectSync);
+
   /* ---- the word behind the reel -----------------------------------------
      The frame at the centre also writes its name across the back wall, huge
      and nearly the colour of the room. Re-triggering the animation means
@@ -1764,6 +2018,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let CARD_H = 0;      // drift never has to measure anything at move time
   let LAID_VH = 0;     // viewport height the current layout was built for
   let DROP = 0;        // how far below centre the ring sits, so the wall word shows
+  let CY = 0;          // screen y of the frames' centre line
+  let PERSP = 0;       // focal length in px, as handed to the scene
+  let RING_ANGLE = 0;  // where the ring is pointing, published by render()
+  const PRES = [];     // per-frame presence and scale, likewise - the water
+  const SCL = [];      // reads them rather than measuring the DOM
   const RING_SPREAD = 1.18;    // how far the ring is pushed out from the faces
   const RING_FORWARD = 0.46;   // how far the whole ring is carried towards the camera
   /* Focal length per unit of card width. Fixing the perspective in the
@@ -1836,6 +2095,7 @@ document.addEventListener('DOMContentLoaded', () => {
        as frames sitting on top of the pager. */
     DROP = vh * REEL_DROP;
     const cy = vh / 2 + DROP;                       // centre of the frames
+    CY = cy;
     /* Both bands are a share of the height with a floor under them, and the
        floor itself gives way on a very short screen. A flat 92px "clear of the
        pager" was a pixel short of the pager's own 91px band on a 1920x720
@@ -1876,8 +2136,9 @@ document.addEventListener('DOMContentLoaded', () => {
     RADIUS = radius;
     CARD_W = w;
     CARD_H = h;
+    PERSP = w * PERSPECTIVE_PER_W;
     if (scene) {
-      scene.style.perspective = (w * PERSPECTIVE_PER_W).toFixed(0) + 'px';
+      scene.style.perspective = PERSP.toFixed(0) + 'px';
       /* Carry the ring down by DROP. Padding moves the flex centre by half of
          what is added, and the vanishing point has to travel with it: leave
          perspective-origin at the middle of the screen and the frames are
@@ -1891,6 +2152,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3:4 grid and stretched over a tall phone frame comes out an ellipse
     waterAlloc();
     FORWARD = radius * RING_FORWARD;   // brings the frontal work forward to screen centre
+    reflectAlloc();
+    reflectSync();
 
     cards.forEach((c, i) => {
       c.style.width = w + 'px';
@@ -2025,6 +2288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let bestIdx = 0;
     let bestAbs = 999;
+    RING_ANGLE = ringAngle;
 
     cards.forEach((c, i) => {
       const rel = norm180(ringAngle - i * STEP_DEG);   // angle from dead-ahead
@@ -2046,6 +2310,9 @@ document.addEventListener('DOMContentLoaded', () => {
          middle of the picture. */
       const tail = clamp((88 - ad) / 26, 0, 1);
       c.style.opacity = tail.toFixed(3);
+      // the water needs both of these and must not go measuring for them
+      PRES[i] = tail;
+      SCL[i] = scale;
       // no brightness filter: one less compositing layer per frame, too
       if (c.style.filter) c.style.filter = '';
       /* The turn-back rides AFTER the ring placement in the transform list, so
@@ -2059,6 +2326,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ' rotateY(' + (-rel * RING_FACE).toFixed(2) + 'deg)' +
         ' scale(' + scale.toFixed(3) + ')';
     });
+
+    /* The water is redrawn HERE, in the same turn that moved the frames, not
+       left to its own loop to catch up on. The loop only runs at 30fps for the
+       shimmer, and a frame that is spinning past covers real ground in the 33ms
+       between two of its ticks - which showed up as the reflection trailing the
+       frame it belongs to. Stamping refLast keeps the loop from drawing the
+       same thing again a moment later. */
+    if (refActive) {
+      if (refStill) {
+        reflectDraw(0);
+      } else {
+        const t = performance.now();
+        refLast = t;
+        reflectDraw(t);
+      }
+    }
 
     /* Only the frontal frame is interactive. .reel-scene is pointer-events:
        none, so this class is what lets one frame opt back in — hover then
