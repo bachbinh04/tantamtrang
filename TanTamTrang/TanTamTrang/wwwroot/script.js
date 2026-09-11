@@ -706,6 +706,55 @@ if (aboutPage) {
 
 
 /* =========================================================
+   RELEASE CLIPS — which size, and a fresh link when one runs out
+   Every clip on the site is a GitHub release asset in two sizes: the
+   1080p file under its own name and a 720p copy named -720.mp4, about
+   half the weight. Phones and tablets, small windows, and any browser
+   saving data or on a slow connection get the 720p copy: on those
+   screens it looks the same and asks half as much of the network.
+   Decided once per page - switching on resize would restart every clip.
+   ========================================================= */
+const CLIP_LITE = (function () {
+  try {
+    const c = navigator.connection;
+    if (c && (c.saveData || /2g|3g/.test(c.effectiveType || ''))) return true;
+    return window.matchMedia('(pointer: coarse), (max-width: 900px), (max-height: 560px)').matches;
+  } catch (e) {
+    return false;
+  }
+})();
+
+function clipUrl(url) {
+  return CLIP_LITE && url ? url.replace(/\.mp4(?=$|[?#])/, '-720.mp4') : url;
+}
+
+/* github.com never serves a release asset itself: it redirects to a signed
+   link that stops working about half an hour later, and the player goes on
+   using that link for every later request - so a clip left long enough
+   errors the next time it needs a piece of the file, and an errored <video>
+   never plays again. Asking github.com again gets a fresh link (the
+   throwaway query keeps a cache from answering with the old redirect), and
+   the clip resumes where it was. `st` holds the retry state, which backs off
+   so a visitor who is simply offline is not caught in a loop of reloads.
+   Returns false while it is still backing off. */
+function refetchClip(v, base, st) {
+  const t = performance.now();
+  if (t < (st._retryAt || 0)) return false;
+  st._fails = (st._fails || 0) + 1;
+  st._retryAt = t + Math.min(30000, 1500 * Math.pow(2, st._fails - 1));
+  const at = v.currentTime || 0;
+  v.src = base + (base.indexOf('?') < 0 ? '?' : '&') + 'r=' + Date.now().toString(36);
+  v.load();
+  if (at > 0) {
+    v.addEventListener('loadedmetadata', () => {
+      if (v.duration && at < v.duration) v.currentTime = at;
+    }, { once: true });
+  }
+  return true;
+}
+
+
+/* =========================================================
    HOME — INFINITE VIDEO REEL
    Four muted, looping videos stacked full-screen. Each <video>
    is parked on a virtual loop (scrollY % period) so the four
@@ -736,6 +785,12 @@ if (aboutPage) {
     vh = window.innerHeight;
     period = N * vh;
     spacer.style.height = (period * LOOPS) + 'px';
+    // Each slide exactly one window tall. 100vh in the stylesheet is the
+    // tallest a phone's viewport ever gets - toolbars tucked away - so while
+    // they showed, every slide overran the spacing used here by their height,
+    // and a clip shown whole sat low, its bottom edge under the browser's own
+    // controls.
+    slides.forEach(s => { s.style.height = vh + 'px'; });
   }
 
   function safePlay(v) {
@@ -745,23 +800,62 @@ if (aboutPage) {
     if (p && p.catch) p.catch(() => {});
   }
 
+  /* A clip that errors, or sits on screen with neither its picture nor its
+     download moving, is fetched again from a fresh link - see refetchClip.
+     Release links expire, even mid-loop, and that was "sometimes the videos
+     don't run": a tab left open a while, a return to Home through the back
+     button, a clip coming round again on the reel. */
+  const STALL_MS = 8000;       // on screen, meant to be playing, nothing moving
+  const now = () => performance.now();
+
+  function touch(s) { s._moved = s._fetched = now(); }
+
+  function revive(s) {
+    const v = s._video;
+    if (!v || !s._src || !refetchClip(v, s._src, s)) return;
+    touch(s);
+    if (s._want && !document.hidden) safePlay(v);
+  }
+
   // Bind each <video> once: re-assert playback if the browser pauses a
   // clip that is still on screen (background tabs, power saving, etc.).
   slides.forEach(s => {
-    s._video = s.querySelector('video');
-    if (!s._video) return;
-    s._video.muted = true;
-    s._video.addEventListener('pause', () => {
-      if (s._want && !document.hidden) safePlay(s._video);
+    const v = s._video = s.querySelector('video');
+    if (!v) return;
+    v.muted = true;
+    s._src = clipUrl(v.getAttribute('src'));   // the 720p copy where that is the one to use
+    if (s._src !== v.getAttribute('src')) v.src = s._src;
+    s._lastTime = 0;
+    touch(s);
+    v.addEventListener('pause', () => {
+      // Re-assert straight away only for a clip actually in view. A browser
+      // that pauses silent clips outside the viewport (Safari does) would
+      // otherwise be answered with play() the instant it paused one of the
+      // clips running ahead, again and again; those are picked up by the
+      // safety net below instead, and still have their data buffered.
+      if (s._want && s._onScreen && !document.hidden && !v.error) safePlay(v);
+    });
+    v.addEventListener('error', () => { if (s._want && !document.hidden) revive(s); });
+    v.addEventListener('progress', () => { s._fetched = now(); });
+    v.addEventListener('timeupdate', () => {
+      const d = v.currentTime - s._lastTime;
+      if (d === 0) return;
+      s._lastTime = v.currentTime;
+      s._moved = now();
+      if (d > 0 && d < 1) s._fails = 0;   // actually playing again, not just a seek
     });
   });
 
   function applyPlayback(slide, want) {
+    if (want && !slide._want) touch(slide);   // its stall clock starts as it comes on screen
     slide._want = want;
     const v = slide._video;
     if (!v) return;
-    if (want) safePlay(v);
-    else if (!v.paused) v.pause();
+    if (want) {
+      if (v.preload !== 'auto') v.preload = 'auto';   // start buffering in earnest
+      if (v.error) revive(slide);
+      else safePlay(v);
+    } else if (!v.paused) v.pause();
   }
 
   function render() {
@@ -775,7 +869,15 @@ if (aboutPage) {
       let y = ((i * vh - y0) % period + period) % period;   // [0, period)
       if (y >= period - vh) y -= period;                     // -> [-vh, period - vh)
       slides[i].style.transform = 'translate3d(0,' + y.toFixed(1) + 'px,0)';
-      applyPlayback(slides[i], y > -vh && y < vh);           // only decode what's on screen
+      /* A clip used to start only once it was on screen - and since it had not
+         fetched a byte by then, it slid in as a still picture and began to
+         move a moment after it arrived, every time. So a clip starts a full
+         screen before it comes into view (the reel travels downward, so that
+         is about eight seconds ahead at its own pace: time enough to be
+         running by the moment it appears) and stops only once it has gone
+         off the top. That is never more than three clips playing at once. */
+      slides[i]._onScreen = y > -vh && y < vh;
+      applyPlayback(slides[i], y > -vh && y < vh * 2);
     }
     maintainLoop();
   }
@@ -926,11 +1028,73 @@ if (aboutPage) {
   center();
   // viewport height isn't final until layout settles — re-centre once it is
   window.addEventListener('load', center);
-  // idle safety net: nothing scrolling, but a visible clip got paused
+  // idle safety net: a clip on screen got paused, errored, or stalled with
+  // nothing arriving - play the first, fetch the other two again
   setInterval(() => {
     if (document.hidden) return;
-    slides.forEach(s => { if (s._want) safePlay(s._video); });
+    const t = now();
+    slides.forEach(s => {
+      const v = s._video;
+      if (!s._want || !v) return;
+      if (v.error) revive(s);
+      else if (!v.paused && t - s._moved > STALL_MS && t - s._fetched > STALL_MS) revive(s);
+      else safePlay(v);
+    });
   }, 900);
+
+  // Back on the tab, or back on this page out of the back/forward cache: the
+  // clips were never meant to move while away, so that is not a stall. One
+  // whose link ran out meanwhile errors on its next request and is fetched
+  // again from there.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) slides.forEach(touch); });
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    slides.forEach(touch);
+    render();
+  });
+
+  /* Autoplay can be refused outright - iOS in Low Power Mode, a data saver -
+     and then every play() rejects until the visitor does something. A tap,
+     click or key press is that permission, so ask again on each. */
+  ['touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, () => {
+    slides.forEach(s => { if (s._want && s._video && !s._video.error) safePlay(s._video); });
+  }, { passive: true }));
+
+  /* Upright screens. The clips are 16:9, and covering a phone held upright
+     keeps barely a third of each frame's width - so there each clip is shown
+     whole, across the screen (see .home-video in the stylesheet), and the
+     bands above and below it are filled with its own colours: a canvas a few
+     pixels across that the current frame is drawn into ten times a second,
+     stretched over the slide and blurred out behind the picture. A frame from
+     another origin may be drawn into a canvas; that only forbids reading the
+     pixels back, which nothing here does. The poster stands in until the clip
+     has a frame to give. */
+  const upright = window.matchMedia('(orientation: portrait)');
+  const AMB_W = 24, AMB_H = 40;
+  slides.forEach(s => {
+    const v = s._video;
+    if (!v) return;
+    const c = document.createElement('canvas');
+    c.className = 'home-ambient' + (v.classList.contains('home-video-mono') ? ' is-mono' : '');
+    c.width = AMB_W;
+    c.height = AMB_H;
+    c.setAttribute('aria-hidden', 'true');
+    s.insertBefore(c, v);
+    s._amb = c.getContext('2d');
+    const poster = v.getAttribute('poster');
+    if (!s._amb || !poster) return;
+    const img = new Image();
+    img.onload = () => { if (!s._ambLive) s._amb.drawImage(img, 0, 0, AMB_W, AMB_H); };
+    img.src = poster;
+  });
+  setInterval(() => {
+    if (document.hidden || !upright.matches) return;
+    slides.forEach(s => {
+      const v = s._video;
+      if (!s._want || !s._amb || !v || v.readyState < 2) return;
+      try { s._amb.drawImage(v, 0, 0, AMB_W, AMB_H); s._ambLive = true; } catch (e) {}
+    });
+  }, 100);
 })();
 
 
@@ -1042,6 +1206,20 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
   const panelH = radius * 0.45;
   const panelW = panelH * (16 / 9);
   const panelGeo = new THREE.PlaneGeometry(panelW, panelH, 1, 1);
+
+  /* On a phone held upright the camera saw less across than one panel is
+     wide, so the cylinder spun by as an unreadable crop. Widen the vertical
+     field of view just enough that the panel in front fits across the screen
+     with a little air either side; any screen wide enough for that already
+     keeps the 75deg the scene was composed at. */
+  function fitFov() {
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const need = 2 * Math.atan((panelW * 1.12) / (2 * radius * aspect)) * 180 / Math.PI;
+    camera.fov = Math.max(75, need);
+    camera.aspect = aspect;
+    camera.updateProjectionMatrix();
+  }
+  fitFov();
 
   // Off-screen but still laid out: display:none would let the browser suspend
   // decoding, and a suspended video hands WebGL a frozen frame.
@@ -1168,7 +1346,12 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
       const scaleY = visibleHeight / pH;
       const scaleX = visibleWidth / pW;
-      const targetScale = Math.max(scaleX, scaleY) * 1.02; // Lay ty le lon hon va +2% bu goc canh
+      // Upright screens show the reel's clips whole, so the hero lands whole
+      // there too - fitted across rather than cropped - or the dissolve into
+      // the reel would read as a cut instead of one continuous shot.
+      const targetScale = window.matchMedia('(orientation: portrait)').matches
+        ? Math.min(scaleX, scaleY)
+        : Math.max(scaleX, scaleY) * 1.02; // Lay ty le lon hon va +2% bu goc canh
 
       // 1. Xoay cuc nhanh 2 vong voi nhip do gat va dien anh hon (expo)
       tl.to(carouselGroup.rotation, {
@@ -1275,8 +1458,7 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
   // Handle Resize
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    fitFov();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   });
@@ -3338,13 +3520,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const SHOWN = 0.2;          // share of a figure on screen that counts as "in view"
 
   const play = (v) => {
-    if (!v || document.hidden || !v.paused) return;
+    if (!v || document.hidden || !v.paused || v.error) return;
     const p = v.play();
     if (p && typeof p.catch === 'function') p.catch(() => {});
   };
+  // These are release assets too: the 720p copy where that is the one to use,
+  // and a fresh link when the one a clip holds runs out (see refetchClip).
+  const shown = items.map(() => false);
+  const retry = items.map(() => ({}));
+  const revive = (i) => {
+    const v = vids[i];
+    if (v && shown[i] && !document.hidden && refetchClip(v, retry[i].base, retry[i])) play(v);
+  };
   vids.forEach((v, i) => {
     if (!v) return;
-    v.addEventListener('playing', () => items[i].classList.add('is-playing'));
+    retry[i].base = clipUrl(v.getAttribute('src'));
+    if (retry[i].base !== v.getAttribute('src')) v.src = retry[i].base;
+    v.addEventListener('error', () => revive(i));
+    v.addEventListener('playing', () => {
+      retry[i]._fails = 0;
+      items[i].classList.add('is-playing');
+    });
     v.addEventListener('pause', () => items[i].classList.remove('is-playing'));
   });
 
@@ -3356,9 +3552,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const seen = Math.max(0, Math.min(vh, r.bottom) - Math.max(0, r.top));
       const inView = r.height > 0 && seen / Math.min(r.height, vh) >= SHOWN;
       const v = vids[i];
+      shown[i] = inView;
       if (inView) {
         it.classList.add('is-in');        // reveal once; it stays revealed
-        play(v);
+        if (v && v.error) revive(i);
+        else play(v);
       } else if (v && !v.paused) {
         v.pause();
       }

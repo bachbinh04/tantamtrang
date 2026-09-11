@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TAN — 3D / Video</title>
-  <link rel="stylesheet" href="style.css?v=116">
+  <link rel="stylesheet" href="style.css?v=119">
 </head>
 <body>
 
@@ -28,18 +28,19 @@
     <a class="poster-back" href="works.html">← Back to Works</a>
   </section>
 
-  <!-- Both clips are 1920x1080, 30s, silent. They play only while on screen
-       (script.js) and pause when scrolled away or when the tab is hidden, so a
-       page with two HD loops on it is not decoding both all the time. The
-       second has preload="none": at ~28MB it is not fetched until it is
-       actually scrolled to. The files live on the repository's "media"
-       release rather than in the site itself, so the pages stay light. muted + playsinline is what lets a phone autoplay
-       them at all. -->
+  <!-- Both clips are 30s loops, silent, on the repository's "media" release
+       rather than in the site itself, so the pages stay light. Each is there
+       twice: 1080p under this name and a 720p copy named -720.mp4, which
+       script.js swaps in on phones, tablets and slow connections - and so
+       neither autoplays or preloads here, or a phone would start on the 1080p
+       file before the script could choose. They play only while on screen and
+       pause when scrolled away or when the tab is hidden. muted + playsinline
+       is what lets a phone play them without a tap. -->
   <section class="vid-grid">
     <figure class="vid-item vid-a">
       <div class="vid-frame">
         <video class="vid" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/fire.mp4" width="1920" height="1080"
-               autoplay muted loop playsinline preload="metadata"
+               muted loop playsinline preload="none"
                disablepictureinpicture aria-label="Fire, looping video"></video>
       </div>
       <figcaption>
@@ -69,6 +70,6 @@
   <a href="works.html">Back to Works ↑</a>
 </footer>
 
-<script src="script.js?v=116"></script>
+<script src="script.js?v=119"></script>
 </body>
 </html>
