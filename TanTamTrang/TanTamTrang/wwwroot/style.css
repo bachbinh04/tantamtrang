@@ -1873,29 +1873,9 @@ body.home-video-body::-webkit-scrollbar{
 /* MVI_8495 is delivered already graded to black & white in the file;
    this only guarantees the look if the source is ever swapped back. */
 .home-video-mono{ filter:grayscale(1); }
-/* Upright screens: covering one with a 16:9 clip keeps barely a third of the
-   frame's width, so there the clip is shown whole, across the screen, and
-   the space above and below takes the clip's own colours - a tiny canvas
-   script.js keeps drawing the current frame into, stretched, blurred and
-   dimmed so the picture stays the thing being looked at. */
-.home-ambient{ display:none; }
-@media (orientation:portrait){
-  .home-slide{ overflow:hidden; }
-  .home-ambient{
-    display:block;
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    filter:blur(18px) saturate(1.2) brightness(.5);
-    transform:scale(1.2);        /* pushes the blur's soft edge out of view */
-  }
-  .home-ambient.is-mono{ filter:grayscale(1) blur(18px) brightness(.5); }
-  .home-video{
-    position:relative;           /* above the fill */
-    object-fit:contain;
-  }
-}
+/* On upright screens script.js makes each slide a band exactly as tall as the
+   clip's 16:9 picture across the full width, so cover shows every frame whole
+   (bar the pixel of overlap between bands) with the clips touching. */
 .home-reel-spacer{
   width:1px;
   height:16000vh; /* JS overrides this on load; kept as a fallback */

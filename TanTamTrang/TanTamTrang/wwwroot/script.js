@@ -756,8 +756,9 @@ function refetchClip(v, base, st) {
 
 /* =========================================================
    HOME — INFINITE VIDEO REEL
-   Four muted, looping videos stacked full-screen. Each <video>
-   is parked on a virtual loop (scrollY % period) so the four
+   Muted, looping videos stacked one after another - a full window
+   each in landscape, a 16:9 band each on upright screens. Each
+   <video> is parked on a virtual loop (scrollY % period) so they
    just keep coming around forever; the tall spacer only exists
    to give the wheel / trackpad something real to move. Native
    colours, no filters. The scrollbar is hidden in CSS.
@@ -777,20 +778,35 @@ function refetchClip(v, base, st) {
   const LOOPS = 40;            // how many full cycles the spacer holds
   const MID = LOOPS / 2;       // start cycle (middle of the spacer)
   let vh = window.innerHeight;
+  let slideH = vh;             // one clip's height: the window, or a 16:9 band upright
+  let offset = 0;              // where slide 0 sits when the reel is parked
   let period = N * vh;         // scroll distance for one full cycle
   let ticking = false;
   let carry = 0;               // sub-pixel glide the scroll position can't hold
 
+  /* Landscape: one clip per window, as ever. Upright screens: each clip is a
+     band exactly as tall as its 16:9 picture across the full width, and the
+     bands follow one another with nothing between them - a strip of film
+     running up the screen, every frame whole. (There it used to be one clip
+     per window too, the picture letterboxed across the middle over a blurred
+     fill, which left well over half a screen between one clip and the next.)
+     The strip parks with slide 0 across the middle, which is where the
+     intro's last shot lands. "Upright" is the stylesheet's and the intro's
+     own test, so all three always agree. */
   function sizeSpacer() {
     vh = window.innerHeight;
-    period = N * vh;
+    const upright = window.matchMedia('(orientation: portrait)').matches;
+    slideH = upright ? Math.ceil(window.innerWidth * 9 / 16) : vh;
+    offset = upright ? Math.round((vh - slideH) / 2) : 0;
+    period = N * slideH;
     spacer.style.height = (period * LOOPS) + 'px';
-    // Each slide exactly one window tall. 100vh in the stylesheet is the
-    // tallest a phone's viewport ever gets - toolbars tucked away - so while
-    // they showed, every slide overran the spacing used here by their height,
-    // and a clip shown whole sat low, its bottom edge under the browser's own
-    // controls.
-    slides.forEach(s => { s.style.height = vh + 'px'; });
+    // Sized here rather than by 100vh, which on a phone is the tallest the
+    // viewport ever gets (toolbars tucked away). One pixel longer than the
+    // spacing, so no hairline ever shows between two clips - the extra pixel
+    // on top (see render). Hung below instead, the clip above slide 0 when
+    // the reel comes round (slide 7, later in the page, so drawn over it)
+    // laid its paused last row across the top of the screen.
+    slides.forEach(s => { s.style.height = (slideH + 1) + 'px'; });
   }
 
   function safePlay(v) {
@@ -846,13 +862,18 @@ function refetchClip(v, base, st) {
     });
   });
 
-  function applyPlayback(slide, want) {
+  function applyPlayback(slide, want, buffer) {
     if (want && !slide._want) touch(slide);   // its stall clock starts as it comes on screen
     slide._want = want;
     const v = slide._video;
     if (!v) return;
+    if ((want || buffer) && v.preload !== 'auto') {
+      // Start buffering in earnest. A clip that has never loaded is told to
+      // now: preload="none" has it waiting for a play() that is not due yet.
+      v.preload = 'auto';
+      if (!want && v.readyState === 0 && !v.error) v.load();
+    }
     if (want) {
-      if (v.preload !== 'auto') v.preload = 'auto';   // start buffering in earnest
       if (v.error) revive(slide);
       else safePlay(v);
     } else if (!v.paused) v.pause();
@@ -866,18 +887,22 @@ function refetchClip(v, base, st) {
     // offsets do not.
     const y0 = window.scrollY + carry;
     for (let i = 0; i < N; i++) {
-      let y = ((i * vh - y0) % period + period) % period;   // [0, period)
-      if (y >= period - vh) y -= period;                     // -> [-vh, period - vh)
-      slides[i].style.transform = 'translate3d(0,' + y.toFixed(1) + 'px,0)';
+      // [-slideH, period - slideH): from just off the top to below the bottom
+      const y = ((i * slideH + offset - y0 + slideH) % period + period) % period - slideH;
+      // one pixel up: that pixel lies over the bottom row of the clip above,
+      // and whenever it is on screen its own clip is already playing
+      slides[i].style.transform = 'translate3d(0,' + (y - 1).toFixed(1) + 'px,0)';
       /* A clip used to start only once it was on screen - and since it had not
          fetched a byte by then, it slid in as a still picture and began to
-         move a moment after it arrived, every time. So a clip starts a full
-         screen before it comes into view (the reel travels downward, so that
-         is about eight seconds ahead at its own pace: time enough to be
-         running by the moment it appears) and stops only once it has gone
-         off the top. That is never more than three clips playing at once. */
-      slides[i]._onScreen = y > -vh && y < vh;
-      applyPlayback(slides[i], y > -vh && y < vh * 2);
+         move a moment after it arrived, every time. So a clip starts before it
+         comes into view and stops only once it has gone off the top: it is
+         buffering two clips' height below the bottom edge and already playing
+         half a clip below it (the reel travels upward - in landscape that is
+         sixteen and four seconds ahead at its own pace). Landscape never has
+         more than three playing at once; an upright strip has as many as are
+         on screen, plus the one about to be. */
+      slides[i]._onScreen = y > -slideH && y < vh;
+      applyPlayback(slides[i], y > -slideH && y < vh + slideH / 2, y < vh + slideH * 2);
     }
     maintainLoop();
   }
@@ -900,7 +925,7 @@ function refetchClip(v, base, st) {
     }
   }
 
-  // re-centre on a clean cycle boundary (one full-screen clip showing)
+  // re-centre on a clean cycle boundary (slide 0 parked where the intro lands)
   function center() {
     sizeSpacer();
     carry = 0;
@@ -1004,7 +1029,7 @@ function refetchClip(v, base, st) {
 
   /* The intro's final act is bugs-home filling the frame, and slide 0 is
      that same clip — so put the two on the same frame just before the
-     dissolve starts. Both crop it the same way (cover, centred), so once
+     dissolve starts. Both frame it the same way and in the same place, so once
      the timecodes agree the cross-fade reads as one continuous shot
      instead of a cut to another take. */
   window.addEventListener('intro:handoff', (e) => {
@@ -1059,42 +1084,6 @@ function refetchClip(v, base, st) {
   ['touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, () => {
     slides.forEach(s => { if (s._want && s._video && !s._video.error) safePlay(s._video); });
   }, { passive: true }));
-
-  /* Upright screens. The clips are 16:9, and covering a phone held upright
-     keeps barely a third of each frame's width - so there each clip is shown
-     whole, across the screen (see .home-video in the stylesheet), and the
-     bands above and below it are filled with its own colours: a canvas a few
-     pixels across that the current frame is drawn into ten times a second,
-     stretched over the slide and blurred out behind the picture. A frame from
-     another origin may be drawn into a canvas; that only forbids reading the
-     pixels back, which nothing here does. The poster stands in until the clip
-     has a frame to give. */
-  const upright = window.matchMedia('(orientation: portrait)');
-  const AMB_W = 24, AMB_H = 40;
-  slides.forEach(s => {
-    const v = s._video;
-    if (!v) return;
-    const c = document.createElement('canvas');
-    c.className = 'home-ambient' + (v.classList.contains('home-video-mono') ? ' is-mono' : '');
-    c.width = AMB_W;
-    c.height = AMB_H;
-    c.setAttribute('aria-hidden', 'true');
-    s.insertBefore(c, v);
-    s._amb = c.getContext('2d');
-    const poster = v.getAttribute('poster');
-    if (!s._amb || !poster) return;
-    const img = new Image();
-    img.onload = () => { if (!s._ambLive) s._amb.drawImage(img, 0, 0, AMB_W, AMB_H); };
-    img.src = poster;
-  });
-  setInterval(() => {
-    if (document.hidden || !upright.matches) return;
-    slides.forEach(s => {
-      const v = s._video;
-      if (!s._want || !s._amb || !v || v.readyState < 2) return;
-      try { s._amb.drawImage(v, 0, 0, AMB_W, AMB_H); s._ambLive = true; } catch (e) {}
-    });
-  }, 100);
 })();
 
 
