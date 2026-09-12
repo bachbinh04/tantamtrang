@@ -1248,41 +1248,59 @@ html.lb-lock body{ overflow:hidden; }
   visibility:visible;
 }
 
-.transition-frame{
+/* Every wipe below - this one, Home <-> Works and Works <-> Contact - moves
+   nothing but transforms, which a phone's GPU runs on its own. They used to
+   animate clip-path, which the browser repaints: a whole-screen picture,
+   every frame, five times over. That is what stuttered on a phone while a
+   desktop emulating a phone's screen (but not its processor) kept up.
+   Each frame is now a window sliding in from the right - the frame itself,
+   which clips - with its picture sliding back the same distance inside it
+   (::before), so the picture holds still while its edge sweeps across: the
+   look the clip-path gave, the slight settle of the zoom included. */
+.transition-frame,
+.hw-frame,
+.wc-frame{
   position:absolute;
   inset:0;
-  clip-path:inset(0 0 0 100%);
-  will-change:clip-path, transform;
+  overflow:hidden;
+  transform:translateX(100%);
+}
+.transition-frame::before,
+.hw-frame::before,
+.wc-frame::before{
+  content:"";
+  position:absolute;
+  inset:0;
   background-size:cover;
   background-position:center;
-  transform:scale(1.045);
+  transform:translateX(-100%) scale(1.045);
 }
 
-.transition-frame-1{
+.transition-frame-1::before{
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
     url("images/transition-01.jpg");
 }
 
-.transition-frame-2{
+.transition-frame-2::before{
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
     url("images/transition-02.jpg");
 }
 
-.transition-frame-3{
+.transition-frame-3::before{
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
     url("images/transition-03.jpg");
 }
 
-.transition-frame-4{
+.transition-frame-4::before{
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
     url("images/transition-04.jpg");
 }
 
-.transition-frame-5{
+.transition-frame-5::before{
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
     url("images/transition-05.jpg");
@@ -1309,14 +1327,22 @@ html.lb-lock body{ overflow:hidden; }
 }
 
 @keyframes transitionWipe{
-  0%{
-    clip-path:inset(0 0 0 100%);
-    transform:scale(1.055);
-  }
-  100%{
-    clip-path:inset(0 0 0 0);
-    transform:scale(1);
-  }
+  0%  { transform:translateX(100%); }
+  100%{ transform:translateX(0); }
+}
+@keyframes transitionWipeImg{
+  0%  { transform:translateX(-100%) scale(1.055); }
+  100%{ transform:translateX(0) scale(1); }
+}
+/* the picture inside each frame runs on the frame's own clock */
+.page-transition.active .transition-frame-1::before{animation:transitionWipeImg .46s 0s   cubic-bezier(.72,0,.2,1) forwards;}
+.page-transition.active .transition-frame-2::before{animation:transitionWipeImg .46s .18s cubic-bezier(.72,0,.2,1) forwards;}
+.page-transition.active .transition-frame-3::before{animation:transitionWipeImg .46s .36s cubic-bezier(.72,0,.2,1) forwards;}
+.page-transition.active .transition-frame-4::before{animation:transitionWipeImg .46s .54s cubic-bezier(.72,0,.2,1) forwards;}
+.page-transition.active .transition-frame-5::before{animation:transitionWipeImg .46s .72s cubic-bezier(.72,0,.2,1) forwards;}
+.page-transition.active .transition-frame,
+.page-transition.active .transition-frame::before{
+  will-change:transform;
 }
 
 .transition-ui{
@@ -1350,7 +1376,8 @@ html.lb-lock body{ overflow:hidden; }
   position:absolute;
   top:0;
   bottom:0;
-  left:100%;
+  left:0;
+  transform:translateX(100vw);
   width:1px;
   background:rgba(255,255,255,.68);
   opacity:0;
@@ -1362,10 +1389,10 @@ html.lb-lock body{ overflow:hidden; }
 }
 
 @keyframes transitionScan{
-  0%{left:100%;opacity:0}
+  0%{transform:translateX(100vw);opacity:0}
   8%{opacity:.8}
   90%{opacity:.5}
-  100%{left:0%;opacity:0}
+  100%{transform:translateX(0);opacity:0}
 }
 
 /* New page opens from black */
@@ -1374,14 +1401,19 @@ html.lb-lock body{ overflow:hidden; }
   inset:0;
   z-index:9998;
   pointer-events:none;
+  overflow:hidden;            /* a window over its own ::before, like the wipes above */
+}
+.page-enter-curtain::before{
+  content:"";
+  position:absolute;
+  inset:0;
   background:#050505;
-  transform-origin:left center;
 }
 
 /* Arriving from the default page transition: the curtain shows the SAME
    last frame image (transition-05) instead of black, so the hand-off is
    seamless — no extra black frame between the wipe and the page. */
-html.pt-enter .page-enter-curtain{
+html.pt-enter .page-enter-curtain::before{
   background-color:#050505;
   background-image:
     linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.22)),
@@ -1393,18 +1425,28 @@ html.pt-enter .page-enter-curtain{
 body.page-ready .page-enter-curtain{
   animation:pageEnterReveal .72s .06s cubic-bezier(.72,0,.2,1) forwards;
 }
+body.page-ready .page-enter-curtain::before{
+  animation:pageEnterRevealImg .72s .06s cubic-bezier(.72,0,.2,1) forwards;
+}
 
+/* its right edge sweeps to the left while what it shows holds still */
 @keyframes pageEnterReveal{
-  0%{clip-path:inset(0 0 0 0)}
-  100%{clip-path:inset(0 100% 0 0)}
+  0%{transform:translateX(0)}
+  100%{transform:translateX(-100%)}
+}
+@keyframes pageEnterRevealImg{
+  0%{transform:translateX(0)}
+  100%{transform:translateX(100%)}
 }
 
 /* optional motion reduction */
 @media(prefers-reduced-motion:reduce){
   .page-transition.active .transition-frame,
+  .page-transition.active .transition-frame::before,
   .page-transition.active::after,
   .page-transition.active .transition-ui,
-  body.page-ready .page-enter-curtain{
+  body.page-ready .page-enter-curtain,
+  body.page-ready .page-enter-curtain::before{
     animation-duration:.01ms!important;
     animation-delay:0ms!important;
   }
@@ -1428,25 +1470,17 @@ body.page-ready .page-enter-curtain{
   visibility:visible;
 }
 
-.hw-frame,
 .hw-black{
   position:absolute;
   inset:0;
-  clip-path:inset(0 0 0 100%);
-  will-change:clip-path, transform, filter;
+  transform:translateX(100%);   /* one flat colour: the window alone is enough */
 }
 
-.hw-frame{
-  background-size:cover;
-  background-position:center;
-  transform:scale(1.045);
-}
-
-.hw-frame-1{background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.28)),url("images/trans-01-home-works.jpg");}
-.hw-frame-2{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-02-home-works.jpg");}
-.hw-frame-3{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-03-home-works.jpg");}
-.hw-frame-4{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-04-home-works.jpg");}
-.hw-frame-5{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-home-works.jpg");}
+.hw-frame-1::before{background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.28)),url("images/trans-01-home-works.jpg");}
+.hw-frame-2::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-02-home-works.jpg");}
+.hw-frame-3::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-03-home-works.jpg");}
+.hw-frame-4::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-04-home-works.jpg");}
+.hw-frame-5::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-home-works.jpg");}
 
 .hw-black{
   background:#050505;
@@ -1458,6 +1492,16 @@ body.page-ready .page-enter-curtain{
 .hw-transition.active .hw-frame-4{animation:transitionWipe .46s .54s cubic-bezier(.72,0,.2,1) forwards;}
 .hw-transition.active .hw-frame-5{animation:transitionWipe .46s .72s cubic-bezier(.72,0,.2,1) forwards;}
 .hw-transition.active .hw-black{  animation:transitionWipe .38s .90s cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame-1::before{animation:transitionWipeImg .46s 0s   cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame-2::before{animation:transitionWipeImg .46s .18s cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame-3::before{animation:transitionWipeImg .46s .36s cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame-4::before{animation:transitionWipeImg .46s .54s cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame-5::before{animation:transitionWipeImg .46s .72s cubic-bezier(.72,0,.2,1) forwards;}
+.hw-transition.active .hw-frame,
+.hw-transition.active .hw-frame::before,
+.hw-transition.active .hw-black{
+  will-change:transform;
+}
 
 /* Home -> Works: no black wipe. Frame 5 simply holds (1.25s, handled in JS),
    then we jump to Works where the tear-in-half reveal plays. */
@@ -1501,6 +1545,19 @@ body.page-ready .page-enter-curtain{
 .hw-tear-right{
   clip-path:inset(0 0 0 50%);
   box-shadow:-16px 0 34px -14px rgba(0,0,0,.65);
+}
+
+/* Upright screens get pictures cut for them: the same middle of each frame
+   that a phone's screen shows anyway, at 900x1600 instead of 3240x2160 -
+   about a quarter of the pixels to decode, which on a phone would otherwise
+   land in the middle of the wipe. */
+@media (orientation:portrait){
+  .hw-frame-1::before{background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.28)),url("images/trans-01-home-works-m.jpg");}
+  .hw-frame-2::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-02-home-works-m.jpg");}
+  .hw-frame-3::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-03-home-works-m.jpg");}
+  .hw-frame-4::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-04-home-works-m.jpg");}
+  .hw-frame-5::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-home-works-m.jpg");}
+  .hw-tear-half{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-home-works-m.jpg");}
 }
 
 .hw-tear-seam{
@@ -1558,7 +1615,11 @@ html.hw-tear-pending .hw-transition .hw-tear{
 html.hw-tear-pending .page-enter-curtain,
 html.hw-tear-done .page-enter-curtain{
   animation:none!important;
-  clip-path:inset(0 100% 0 0)!important;
+  transform:translateX(-100%)!important;
+}
+html.hw-tear-pending .page-enter-curtain::before,
+html.hw-tear-done .page-enter-curtain::before{
+  animation:none!important;
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -1580,7 +1641,8 @@ html.hw-tear-done .page-enter-curtain{
 .hw-transition::after{
   content:"";
   position:absolute;
-  top:0;bottom:0;left:100%;
+  top:0;bottom:0;left:0;
+  transform:translateX(100vw);
   width:1px;
   background:rgba(255,255,255,.68);
   opacity:0;
@@ -1592,6 +1654,7 @@ html.hw-tear-done .page-enter-curtain{
 
 @media(prefers-reduced-motion:reduce){
   .hw-transition.active .hw-frame,
+  .hw-transition.active .hw-frame::before,
   .hw-transition.active .hw-black,
   .hw-transition.active::after,
   .hw-transition.active .transition-ui{
@@ -1620,26 +1683,26 @@ html.hw-tear-done .page-enter-curtain{
   visibility:visible;
 }
 
-.wc-frame{
-  position:absolute;
-  inset:0;
-  clip-path:inset(0 0 0 100%);
-  background-size:cover;
-  background-position:center;
-  transform:scale(1.045);
-  will-change:clip-path, transform;
-}
-.wc-frame-1{background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.28)),url("images/trans-01-works-contact.jpg");}
-.wc-frame-2{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-02-works-contact.jpg");}
-.wc-frame-3{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-03-works-contact.jpg");}
-.wc-frame-4{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-04-works-contact.jpg");}
-.wc-frame-5{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-works-contact.jpg");}
+.wc-frame-1::before{background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.28)),url("images/trans-01-works-contact.jpg");}
+.wc-frame-2::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-02-works-contact.jpg");}
+.wc-frame-3::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-03-works-contact.jpg");}
+.wc-frame-4::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-04-works-contact.jpg");}
+.wc-frame-5::before{background-image:linear-gradient(rgba(0,0,0,.1),rgba(0,0,0,.24)),url("images/trans-05-works-contact.jpg");}
 
 .wc-transition.active .wc-frame-1{animation:transitionWipe .46s 0s   cubic-bezier(.72,0,.2,1) forwards;}
 .wc-transition.active .wc-frame-2{animation:transitionWipe .46s .18s cubic-bezier(.72,0,.2,1) forwards;}
 .wc-transition.active .wc-frame-3{animation:transitionWipe .46s .36s cubic-bezier(.72,0,.2,1) forwards;}
 .wc-transition.active .wc-frame-4{animation:transitionWipe .46s .54s cubic-bezier(.72,0,.2,1) forwards;}
 .wc-transition.active .wc-frame-5{animation:transitionWipe .46s .72s cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame-1::before{animation:transitionWipeImg .46s 0s   cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame-2::before{animation:transitionWipeImg .46s .18s cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame-3::before{animation:transitionWipeImg .46s .36s cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame-4::before{animation:transitionWipeImg .46s .54s cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame-5::before{animation:transitionWipeImg .46s .72s cubic-bezier(.72,0,.2,1) forwards;}
+.wc-transition.active .wc-frame,
+.wc-transition.active .wc-frame::before{
+  will-change:transform;
+}
 
 .wc-transition .transition-ui{
   opacity:0;
@@ -1746,11 +1809,16 @@ html.wc-split-pending .wc-transition .wc-split{
 html.wc-split-pending .page-enter-curtain,
 html.wc-split-done .page-enter-curtain{
   animation:none!important;
-  clip-path:inset(0 100% 0 0)!important;
+  transform:translateX(-100%)!important;
+}
+html.wc-split-pending .page-enter-curtain::before,
+html.wc-split-done .page-enter-curtain::before{
+  animation:none!important;
 }
 
 @media(prefers-reduced-motion:reduce){
   .wc-transition.active .wc-frame,
+  .wc-transition.active .wc-frame::before,
   .wc-transition.active .transition-ui,
   .wc-transition.split-go .wc-split-top,
   .wc-transition.split-go .wc-split-bottom,

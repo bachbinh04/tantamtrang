@@ -783,6 +783,7 @@ function refetchClip(v, base, st) {
   let period = N * vh;         // scroll distance for one full cycle
   let ticking = false;
   let carry = 0;               // sub-pixel glide the scroll position can't hold
+  let leaving = false;         // a transition to another page has covered the screen
 
   /* Landscape: one clip per window, as ever. Upright screens: each clip is a
      band exactly as tall as its 16:9 picture across the full width, and the
@@ -881,6 +882,7 @@ function refetchClip(v, base, st) {
 
   function render() {
     ticking = false;
+    if (leaving) return;       // covered by the transition: nothing to place or play
     // carry is the sub-pixel part of the glide the scroll position cannot
     // hold (see glideTick). Folding it in here is what actually makes the
     // motion smooth: transforms composite at sub-pixel precision, scroll
@@ -983,7 +985,7 @@ function refetchClip(v, base, st) {
   function glideTick(t) {
     const dt = lastT ? Math.min(t - lastT, 50) : 16;
     lastT = t;
-    const want = armed && glide && !document.hidden;
+    const want = armed && glide && !document.hidden && !leaving;
     if (!want) { carry = 0; window.requestAnimationFrame(glideTick); return; }
 
     if (speed < 1) speed = Math.min(1, speed + dt / RAMP_MS);
@@ -1056,7 +1058,7 @@ function refetchClip(v, base, st) {
   // idle safety net: a clip on screen got paused, errored, or stalled with
   // nothing arriving - play the first, fetch the other two again
   setInterval(() => {
-    if (document.hidden) return;
+    if (document.hidden || leaving) return;
     const t = now();
     slides.forEach(s => {
       const v = s._video;
@@ -1074,14 +1076,28 @@ function refetchClip(v, base, st) {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) slides.forEach(touch); });
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
+    leaving = false;
     slides.forEach(touch);
     render();
+  });
+
+  // Another page's transition has covered the screen (see the transition
+  // controller): stop every clip and the glide. On a phone, up to six clips
+  // decoding and a scroll every frame were fighting the wipe for the processor
+  // with nothing left to show.
+  window.addEventListener('page:leave', () => {
+    leaving = true;
+    slides.forEach(s => {
+      s._want = false;
+      if (s._video && !s._video.paused) s._video.pause();
+    });
   });
 
   /* Autoplay can be refused outright - iOS in Low Power Mode, a data saver -
      and then every play() rejects until the visitor does something. A tap,
      click or key press is that permission, so ask again on each. */
   ['touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, () => {
+    if (leaving) return;
     slides.forEach(s => { if (s._want && s._video && !s._video.error) safePlay(s._video); });
   }, { passive: true }));
 })();
@@ -1489,6 +1505,56 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
   const currentName = pageNames[currentFile] || 'PAGE';
 
+  /* Decode the pictures a transition will show before it shows them. Frames
+     this size are otherwise decoded the first time they are painted, which on
+     a phone is a hitch in the middle of the wipe. The Home <-> Works frames
+     are warmed once the page has settled, and whichever overlay a click is
+     about to play is given a moment - never more than a quarter of a second -
+     to finish first. */
+  const decodes = new Map();   // url -> promise of the decoded image, kept alive here
+  function predecode(root) {
+    if (!root) return Promise.resolve();
+    const wait = [];
+    root.querySelectorAll('.transition-frame, .hw-frame, .wc-frame, .hw-tear-half, .wc-split-half').forEach((el) => {
+      [getComputedStyle(el, '::before').backgroundImage, getComputedStyle(el).backgroundImage].forEach((bg) => {
+        (bg || '').replace(/url\(["']?([^"')]+)["']?\)/g, (m, url) => {
+          if (!decodes.has(url)) {
+            const img = new Image();
+            img.src = url;
+            decodes.set(url, (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => img));
+          }
+          wait.push(decodes.get(url));
+          return m;
+        });
+      });
+    });
+    return Promise.all(wait);
+  }
+  const ready = (root) => Promise.race([predecode(root), new Promise((r) => setTimeout(r, 250))]);
+  if (hwOverlay) {
+    window.addEventListener('load', () => {
+      const warm = () => predecode(hwOverlay);
+      if ('requestIdleCallback' in window) window.requestIdleCallback(warm, { timeout: 4000 });
+      else setTimeout(warm, 2000);
+    }, { once: true });
+  }
+
+  /* Once the first frame has covered the screen nothing of this page can be
+     seen, so it is told to stop working ('page:leave'): on a phone the clips
+     and loops it kept running were competing with the transition for the same
+     processor. Coming back through the back button undoes it all. */
+  const COVERED_MS = 480;       // the first frame's .46s wipe, and a beat
+  let leaving = false;
+  function leave(navigateMs, href) {
+    setTimeout(() => window.dispatchEvent(new Event('page:leave')), COVERED_MS);
+    setTimeout(() => { window.location.href = href; }, navigateMs);
+  }
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    leaving = false;
+    [overlay, hwOverlay, wcOverlay].forEach((el) => { if (el) el.classList.remove('active', 'to-works'); });
+  });
+
   // Arriving on Works straight from the Home -> Works transition:
   // the frame-5 image is already covering the screen; tear it in half to reveal Works.
   if (
@@ -1553,6 +1619,8 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
     link.addEventListener('click', e => {
       e.preventDefault();
+      if (leaving) return;        // one transition at a time
+      leaving = true;
 
       // Works <-> Contact: montage -> hold 1.25s -> curved split reveal (both ways).
       if (isWorksContact && wcOverlay) {
@@ -1561,13 +1629,15 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
         if (wcFrom) wcFrom.textContent = currentName;
         if (wcTo) wcTo.textContent = pageNames[targetFile];
 
-        wcOverlay.classList.remove('active');
-        void wcOverlay.offsetWidth;
-        wcOverlay.classList.add('active');
+        ready(wcOverlay).then(() => {
+          wcOverlay.classList.remove('active');
+          void wcOverlay.offsetWidth;
+          wcOverlay.classList.add('active');
 
-        try { sessionStorage.setItem('wcSplit', '1'); } catch (e) {}
-        // frame 5 fully covers at ~1.18s; +1.25s hold => navigate at ~2.43s
-        setTimeout(() => { window.location.href = href; }, 2430);
+          try { sessionStorage.setItem('wcSplit', '1'); } catch (e) {}
+          // frame 5 fully covers at ~1.18s; +1.25s hold => navigate at ~2.43s
+          leave(2430, href);
+        });
         return;
       }
 
@@ -1582,38 +1652,40 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
         // where a tear-in-half reveal plays.
         const toWorks = targetFile === 'works.html';
 
-        hwOverlay.classList.remove('active', 'to-works');
-        if (toWorks) hwOverlay.classList.add('to-works');
-        void hwOverlay.offsetWidth;
-        hwOverlay.classList.add('active');
+        ready(hwOverlay).then(() => {
+          hwOverlay.classList.remove('active', 'to-works');
+          if (toWorks) hwOverlay.classList.add('to-works');
+          void hwOverlay.offsetWidth;
+          hwOverlay.classList.add('active');
 
-        if (toWorks) {
-          try { sessionStorage.setItem('hwTear', '1'); } catch (e) {}
-          // frame 5 is fully revealed at ~1.18s; +1.25s hold => navigate at ~2.43s
-          setTimeout(() => { window.location.href = href; }, 2430);
-        } else {
-          setTimeout(() => { window.location.href = href; }, 1340);
-        }
+          if (toWorks) {
+            try { sessionStorage.setItem('hwTear', '1'); } catch (e) {}
+            // frame 5 is fully revealed at ~1.18s; +1.25s hold => navigate at ~2.43s
+            leave(2430, href);
+          } else {
+            leave(1340, href);
+          }
+        });
         return;
       }
 
       fromLabel.textContent = currentName;
       toLabel.textContent = pageNames[targetFile];
 
-      overlay.classList.remove('active');
+      ready(overlay).then(() => {
+        overlay.classList.remove('active');
 
-      // restart CSS animations reliably
-      void overlay.offsetWidth;
-      overlay.classList.add('active');
+        // restart CSS animations reliably
+        void overlay.offsetWidth;
+        overlay.classList.add('active');
 
-      // Hand the last frame (transition-05) over to the destination's
-      // entrance curtain so there is no black frame between them.
-      try { sessionStorage.setItem('ptEnter', '1'); } catch (e) {}
+        // Hand the last frame (transition-05) over to the destination's
+        // entrance curtain so there is no black frame between them.
+        try { sessionStorage.setItem('ptEnter', '1'); } catch (e) {}
 
-      // Navigate once frame 5 has fully covered the screen (~1.18s) plus a beat.
-      setTimeout(() => {
-        window.location.href = href;
-      }, 1400);
+        // Navigate once frame 5 has fully covered the screen (~1.18s) plus a beat.
+        leave(1400, href);
+      });
     });
   });
 })();
@@ -2046,6 +2118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let refRAF = null;
   let refLast = 0;
   let refActive = false;   // is there water on this screen at all
+  let refLeaving = false;  // a transition to another page has covered the screen
   const refStill = !!(window.matchMedia &&
                       window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -2432,7 +2505,7 @@ document.addEventListener('DOMContentLoaded', () => {
      from render() as the ring turns. */
   function reflectSync() {
     if (!rctx) return;
-    if (window.innerWidth < REFLECT_MIN_W || document.hidden) {
+    if (window.innerWidth < REFLECT_MIN_W || document.hidden || refLeaving) {
       refActive = false;
       reflectStop();
       return;
@@ -2442,6 +2515,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refRAF === null) { refLast = 0; refRAF = window.requestAnimationFrame(reflectTick); }
   }
   document.addEventListener('visibilitychange', reflectSync);
+  // leaving for another page: nothing of this one shows under its transition
+  window.addEventListener('page:leave', () => { refLeaving = true; reflectSync(); waterStop(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) { refLeaving = false; reflectSync(); } });
   bgImgs.forEach((im, i) => {
     if (!im) return;
     im.addEventListener('load', () => {
