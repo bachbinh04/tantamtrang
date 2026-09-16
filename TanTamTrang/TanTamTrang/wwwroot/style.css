@@ -899,6 +899,57 @@ html.lb-lock body{ overflow:hidden; }
   color:#fff;
   background:transparent;
 }
+/* The CV viewer. The page darkens behind it while the CV grows out of the VIEW
+   CV button (script.js drives the zoom). The whole page is always in view:
+   the frame takes the largest size that fits the screen both ways - never
+   wider than 860px, never taller than the screen less a margin (its width
+   times 2716/1920, the picture's own proportion) - and the auto margins
+   centre it. Having to scroll to reach the bottom of a one-page CV was the
+   first version's mistake. */
+.cv-lb{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(7,7,7,0);
+  visibility:hidden;
+  pointer-events:none;
+  transition:background-color .5s ease, visibility 0s linear .56s;
+}
+.cv-lb.is-on{
+  background:rgba(7,7,7,.94);
+  visibility:visible;
+  pointer-events:auto;
+  transition:background-color .5s ease, visibility 0s;
+}
+.cv-lb-scroll{
+  position:absolute;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:clamp(20px,4vh,48px) clamp(12px,3vw,48px);
+}
+.cv-lb-frame{
+  flex:0 0 auto;
+  width:min(860px, 100%, calc((100vh - 2 * clamp(20px,4vh,48px)) * .7069));
+  width:min(860px, 100%, calc((100dvh - 2 * clamp(20px,4dvh,48px)) * .7069));   /* a phone's visible height */
+  margin:auto 0;
+  background:#e4e2dc;               /* the CV's own paper, while the picture decodes */
+  box-shadow:0 40px 120px -40px rgba(0,0,0,.9);
+  transform-origin:center center;
+}
+.cv-lb-frame img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+.cv-lb.is-on .cv-lb-close{
+  opacity:1;
+  transform:scale(1) rotate(0);
+}
 /* A line this face has nothing for is removed, not left as a blank gap that
    pushes the rest of the column off centre. */
 .about-copy .is-empty{
@@ -1850,10 +1901,13 @@ html.wc-split-done .page-enter-curtain::before{
   border-bottom:1px solid rgba(255,255,255,.05);
 }
 
+/* The header - the name and the menu - is set in Arial Black. Windows and
+   macOS both have it; where it is missing (most phones) the heaviest Arial or
+   Helvetica on the device stands in, which is why the weight is spelled out. */
 .brand-static{
-  font-family: 'Greek Freak Local', sans-serif;
+  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 900;
   font-size: 20px;
   letter-spacing: 0.05em;
   color:#f2f2ee;
@@ -1867,7 +1921,8 @@ html.wc-split-done .page-enter-curtain::before{
   align-items:center;
   gap:48px;
   justify-content:flex-end;
-  font-family: 'Greek Freak Local', sans-serif;
+  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
+  font-weight:900;
   font-size: 16px;
   letter-spacing:.1em;
   text-transform:uppercase;
@@ -1944,6 +1999,216 @@ body.home-video-body::-webkit-scrollbar{
 /* On upright screens script.js makes each slide a band exactly as tall as the
    clip's 16:9 picture across the full width, so cover shows every frame whole
    (bar the pixel of overlap between bands) with the clips touching. */
+/* HOME - detail view. Click a clip and it opens the way a work page would:
+   the clip settles into a band across the top (script.js moves the clip
+   itself), the rest of the reel fades away, the title comes up in the band's
+   corner - see-through, the footage showing in the letters - and the details
+   rise below on black. */
+.home-video-body.reel-clickable{ cursor:pointer; }
+.home-detail{
+  --hd-band:45vh;
+  --hd-gutter:clamp(14px,1.05vw,20px);
+  position:fixed;
+  inset:0;
+  z-index:60;
+  pointer-events:none;
+  visibility:hidden;
+  transition:visibility 0s linear .75s;
+}
+.home-detail.is-on{
+  visibility:visible;
+  transition:visibility 0s;
+}
+.hd-shade,
+.hd-hero{
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:var(--hd-band);
+}
+.hd-shade{
+  background:linear-gradient(to bottom, rgba(0,0,0,.2), rgba(0,0,0,0) 36%, rgba(0,0,0,.42));
+  opacity:0;
+  transition:opacity .4s ease;
+}
+.home-detail.is-on .hd-shade{
+  opacity:1;
+  transition:opacity .6s ease .35s;
+}
+.hd-hero{
+  padding:0;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+}
+.home-detail.is-on .hd-hero,
+.home-detail.is-on .hd-sheet{
+  pointer-events:auto;
+}
+.hd-title-mask{
+  position:absolute;
+  left:var(--hd-gutter);
+  right:var(--hd-gutter);
+  bottom:calc(100% - var(--hd-band) + clamp(12px,2.4vh,26px));
+  overflow:hidden;
+  padding-top:.06em;
+  pointer-events:none;
+}
+/* See-through title: the letters are filled with a white that thins towards
+   their feet, so the clip shows through them more and more on the way down. */
+.hd-title{
+  margin:0;
+  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
+  font-weight:900;
+  font-size:clamp(38px,5.4vw,104px);
+  line-height:.94;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+  overflow-wrap:anywhere;
+  background:linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.8) 48%, rgba(255,255,255,.48) 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  transform:translateY(106%);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+.home-detail.is-on .hd-title{
+  transform:none;
+  transition:transform .95s cubic-bezier(.16,.84,.24,1) .46s;
+}
+.hd-sheet{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  top:var(--hd-band);
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  background:#000;
+  color:#fff;
+  cursor:default;
+  opacity:0;
+  transform:translateY(40px);
+  transition:opacity .3s ease, transform .4s cubic-bezier(.4,0,.2,1);
+}
+.home-detail.is-on .hd-sheet{
+  opacity:1;
+  transform:none;
+  transition:opacity .5s ease .3s, transform .85s cubic-bezier(.16,.84,.24,1) .3s;
+}
+.hd-body{
+  flex:1 0 auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  column-gap:clamp(20px,2vw,40px);
+  padding:clamp(26px,5vh,48px) var(--hd-gutter) 40px;
+}
+.hd-left{
+  display:grid;
+  grid-template-columns:118px minmax(0,1fr);
+  align-items:start;
+}
+.hd-back{
+  justify-self:start;
+  padding:0;
+  border:0;
+  background:none;
+  color:#fff;
+  font:700 13px/1.35 Arial, Helvetica, sans-serif;
+  cursor:pointer;
+}
+.hd-back:hover,
+.hd-back:focus-visible{
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.hd-rows{
+  display:grid;
+  row-gap:14px;
+  margin:0;
+}
+.hd-row{
+  display:grid;
+  grid-template-columns:236px minmax(0,1fr);
+}
+.hd-row[hidden],
+.hd-desc[hidden]{
+  display:none;
+}
+.hd-row dt,
+.hd-row dd{
+  margin:0;
+  font:700 13px/1.35 Arial, Helvetica, sans-serif;
+}
+.hd-row dt{ color:#8c8c8c; }
+.hd-row dd{ color:#fff; white-space:pre-line; }
+.hd-desc{
+  margin:0;
+  font:700 clamp(20px,1.72vw,34px)/1.06 Arial, Helvetica, sans-serif;
+  letter-spacing:-.005em;
+  color:#dcdcdc;
+}
+.hd-foot{
+  display:flex;
+  justify-content:space-between;
+  padding:0 var(--hd-gutter) 16px;
+  font:700 13px/1 Arial, Helvetica, sans-serif;
+  color:#fff;
+}
+.hd-clock span{ color:#8c8c8c; }
+/* the details come in after the sheet, one after another, and go at once */
+.hd-back,
+.hd-row,
+.hd-desc,
+.hd-foot{
+  opacity:0;
+  transform:translateY(12px);
+  transition:opacity .2s ease, transform .25s ease;
+}
+.home-detail.is-on .hd-back,
+.home-detail.is-on .hd-row,
+.home-detail.is-on .hd-desc,
+.home-detail.is-on .hd-foot{
+  opacity:1;
+  transform:none;
+  transition:opacity .55s ease, transform .75s cubic-bezier(.16,.84,.24,1);
+}
+.home-detail.is-on .hd-back{ transition-delay:.5s; }
+.home-detail.is-on .hd-row:nth-child(1){ transition-delay:.55s; }
+.home-detail.is-on .hd-row:nth-child(2){ transition-delay:.6s; }
+.home-detail.is-on .hd-row:nth-child(3){ transition-delay:.65s; }
+.home-detail.is-on .hd-row:nth-child(4){ transition-delay:.7s; }
+.home-detail.is-on .hd-row:nth-child(5){ transition-delay:.75s; }
+.home-detail.is-on .hd-desc{ transition-delay:.62s; }
+.home-detail.is-on .hd-foot{ transition-delay:.85s; }
+@media(max-width:800px){
+  .hd-body{
+    grid-template-columns:minmax(0,1fr);
+    row-gap:30px;
+  }
+  .hd-left{
+    grid-template-columns:minmax(0,1fr);
+    row-gap:22px;
+  }
+  .hd-row{
+    grid-template-columns:110px minmax(0,1fr);
+  }
+  .hd-desc{
+    font-size:clamp(18px,5vw,24px);
+    line-height:1.12;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .home-detail *,
+  .home-detail.is-on *{
+    transition-duration:.01ms !important;
+    transition-delay:0s !important;
+  }
+}
 .home-reel-spacer{
   width:1px;
   height:16000vh; /* JS overrides this on load; kept as a fallback */
@@ -1988,9 +2253,10 @@ body.home-video-body::-webkit-scrollbar{
   align-items:center;
 }
 .loading-title{
-  font-family:'Greek Freak Local', sans-serif;
+  /* Arial Black, like the header, with the same fallbacks for phones */
+  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
   font-style:normal;
-  font-weight:400;
+  font-weight:900;
   font-size:clamp(20px,3.4vw,44px);
   letter-spacing:.14em;
   text-align:center;
@@ -2051,6 +2317,25 @@ body.home-video-body::-webkit-scrollbar{
   .topnav{
     gap:16px;
     font-size:10px;
+  }
+}
+
+/* Narrow phones: Arial Black is far wider than the header's old face, and at
+   360px the name ran into the menu; at 320px the menu ran 31px off the
+   screen. Smaller type, tighter tracking and gaps keep all of it on one line
+   with room between the two. */
+@media(max-width:420px){
+  .topbar{
+    padding:0 14px;
+  }
+  .brand-static{
+    font-size:11px;
+    letter-spacing:.02em;
+  }
+  .topnav{
+    gap:10px;
+    font-size:9px;
+    letter-spacing:.05em;
   }
 }
 

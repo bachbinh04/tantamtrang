@@ -8,7 +8,7 @@ function setActiveNav() {
   });
 }
 setActiveNav();
-
+document.head.insertAdjacentHTML('beforeend', '<link rel="icon" type="image/png" href="/images/favicon.png">');
 /* Vertical face counter on the About and Poster pages.
    The rail draws a LOOP, not a line: face N-1 is followed by face 0, so the
    scale it stands for is one whole revolution and the divisor is N, not N-1.
@@ -271,7 +271,13 @@ if (aboutPage) {
     let hR = 0;
     if (stacked) slides.forEach((sl) => { applySlide(sl); hR = Math.max(hR, tall(copyR)); });
 
-    els.forEach((el, k) => { el.innerHTML = saved[k][0]; el.className = saved[k][1]; });
+    // Put back only what measuring changed. Rewriting an unchanged column
+    // anyway replaced its elements - the CV buttons among them - and anything
+    // bound to the old ones (the CV viewer's click) went with them.
+    els.forEach((el, k) => {
+      if (el.innerHTML !== saved[k][0]) el.innerHTML = saved[k][0];
+      el.className = saved[k][1];
+    });
     if (stacked) {
       copyL.style.minHeight = Math.ceil(hL) + 'px';
       copyR.style.minHeight = Math.ceil(hR) + 'px';
@@ -784,6 +790,7 @@ function refetchClip(v, base, st) {
   let ticking = false;
   let carry = 0;               // sub-pixel glide the scroll position can't hold
   let leaving = false;         // a transition to another page has covered the screen
+  let detailFor = -1;          // the slide open in the detail view, or -1
 
   /* Landscape: one clip per window, as ever. Upright screens: each clip is a
      band exactly as tall as its 16:9 picture across the full width, and the
@@ -880,17 +887,21 @@ function refetchClip(v, base, st) {
     } else if (!v.paused) v.pause();
   }
 
+  // Where slide i sits on screen, in [-slideH, period - slideH): from just
+  // off the top to below the bottom. carry is the sub-pixel part of the glide
+  // the scroll position cannot hold (see glideTick); folding it in is what
+  // makes the motion smooth - transforms composite at sub-pixel precision,
+  // scroll offsets do not.
+  function slideY(i) {
+    const y0 = window.scrollY + carry;
+    return ((i * slideH + offset - y0 + slideH) % period + period) % period - slideH;
+  }
+
   function render() {
     ticking = false;
-    if (leaving) return;       // covered by the transition: nothing to place or play
-    // carry is the sub-pixel part of the glide the scroll position cannot
-    // hold (see glideTick). Folding it in here is what actually makes the
-    // motion smooth: transforms composite at sub-pixel precision, scroll
-    // offsets do not.
-    const y0 = window.scrollY + carry;
+    if (leaving || detailFor >= 0) return;   // covered, or held still by the detail view
     for (let i = 0; i < N; i++) {
-      // [-slideH, period - slideH): from just off the top to below the bottom
-      const y = ((i * slideH + offset - y0 + slideH) % period + period) % period - slideH;
+      const y = slideY(i);
       // one pixel up: that pixel lies over the bottom row of the clip above,
       // and whenever it is on screen its own clip is already playing
       slides[i].style.transform = 'translate3d(0,' + (y - 1).toFixed(1) + 'px,0)';
@@ -955,12 +966,14 @@ function refetchClip(v, base, st) {
      ends by zooming bugs-home to full frame, and bugs-home is this reel's
      first slide — so the reel must be parked on that same slide, motionless,
      when the canvas dissolves away, or the illusion of one continuous shot
-     dies the instant the handover happens. Then it holds a beat longer, and
-     eases up to speed over RAMP_MS rather than snapping into motion.      */
-  const SLIDE_MS = 8000;
+     dies the instant the handover happens. Then it holds only a beat - half a
+     second - and eases up to speed over RAMP_MS rather than snapping into
+     motion. (It used to hold two seconds and take 1.6 more to find its pace,
+     so the reel seemed to sit there long after the intro had gone.)      */
+  const SLIDE_MS = 8000;       // one screen's height every 4s (was 8s)
   const RESUME_MS = 2600;
-  const HOLD_MS = 2000;        // stillness after the intro hands the frame over
-  const RAMP_MS = 1600;        // time to reach full pace from a standstill
+  const HOLD_MS = 500;         // stillness after the intro hands the frame over
+  const RAMP_MS = 700;         // time to reach full pace from a standstill
   const reduceMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let armed = false;           // intro is done and the hold has elapsed
@@ -985,7 +998,7 @@ function refetchClip(v, base, st) {
   function glideTick(t) {
     const dt = lastT ? Math.min(t - lastT, 50) : 16;
     lastT = t;
-    const want = armed && glide && !document.hidden && !leaving;
+    const want = armed && glide && !document.hidden && !leaving && detailFor < 0;
     if (!want) { carry = 0; window.requestAnimationFrame(glideTick); return; }
 
     if (speed < 1) speed = Math.min(1, speed + dt / RAMP_MS);
@@ -1011,7 +1024,10 @@ function refetchClip(v, base, st) {
   }
   window.requestAnimationFrame(glideTick);
 
-  function armGlide() { armed = true; }
+  function armGlide() {
+    armed = true;
+    document.body.classList.add('reel-clickable');   // the clips can be clicked for their info now
+  }
 
   /* Wait for the intro to report in, then hold. If there is no intro on the
      page at all (libraries blocked, a re-entry that skipped it) there is
@@ -1025,7 +1041,7 @@ function refetchClip(v, base, st) {
       if (!window.introFinished) return;
       clearInterval(waitIntro);
       setTimeout(armGlide, HOLD_MS);
-    }, 120);
+    }, 50);
     setTimeout(() => { clearInterval(waitIntro); armGlide(); }, 26000);
   }
 
@@ -1100,6 +1116,224 @@ function refetchClip(v, base, st) {
     if (leaving) return;
     slides.forEach(s => { if (s._want && s._video && !s._video.error) safePlay(s._video); });
   }, { passive: true }));
+
+  /* ---- detail view -------------------------------------------------------
+     Click or tap a clip and it opens the way a work page would. The clip
+     itself settles into a band across the top of the screen - its middle
+     cropped to the band in landscape, grown to fill it on an upright screen -
+     while the rest of the reel fades off either way; its title comes up in the
+     band's corner and its details rise below. The words are the clip's data-*
+     attributes in index.html (title, client, category, year, role, desc); a
+     line left empty is not shown, and the length is read from the clip. Back,
+     Esc or a click on the band plays it all in reverse, and the glide carries
+     on from exactly where it was: the page is held still while it is open.
+     The stage takes no pointer events - the page has to stay scrollable over
+     it - so a click is matched to a clip by where it landed. */
+  const detail = document.getElementById('homeDetail');
+  const hdTitle = document.getElementById('hdTitle');
+  const hdDesc = document.getElementById('hdDesc');
+  const hdNo = document.getElementById('hdNo');
+  const hdClock = document.getElementById('hdClock');
+  const hdBack = document.getElementById('hdBack');
+  const hdHero = document.getElementById('hdHero');
+  if (detail && hdTitle && hdDesc && hdNo && hdClock && hdBack && hdHero) {
+    const rows = [...detail.querySelectorAll('.hd-row')];
+    const EASE_IO = 'cubic-bezier(.7,0,.2,1)';
+    const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const upright = window.matchMedia('(orientation: portrait)');
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const clipLength = (sec) => {
+      if (!isFinite(sec) || sec <= 0) return '';
+      const t = Math.round(sec);
+      return Math.floor(t / 60) + ':' + pad2(t % 60);
+    };
+    let busy = false;
+    let geo = null;
+    let anims = [];
+    let clockTimer = 0;
+
+    // the clip under a point; where two share the overlap pixel, the one
+    // later in the page is the one drawn on top
+    const slideAt = (y) => {
+      let hit = -1;
+      slides.forEach((sl, i) => {
+        const r = sl.getBoundingClientRect();
+        if (y >= r.top && y < r.bottom) hit = i;
+      });
+      return hit;
+    };
+
+    // The band across the top, and how clip i is fitted to it.
+    function geometry(i) {
+      const band = Math.round(Math.max(160, Math.min(vh * (upright.matches ? 0.38 : 0.45), vh - 220)));
+      const g = { y: slideY(i), band, k: 1, tY: 0, cT: 0, cB: 0 };
+      if (slideH >= band) {            // taller than the band: keep its middle
+        g.cT = Math.round((slideH - band) / 2);
+        g.cB = slideH + 1 - band - g.cT;
+        g.tY = -g.cT;
+      } else {                         // shorter: grow it, from the top, to fill it
+        g.k = band / slideH;
+      }
+      return g;
+    }
+    const atReel = (y) => ({ transform: 'translate3d(0,' + (y - 1).toFixed(1) + 'px,0) scale(1)', clipPath: 'inset(0px 0px 0px 0px)' });
+    const inBand = (g) => ({ transform: 'translate3d(0,' + g.tY + 'px,0) scale(' + g.k.toFixed(4) + ')', clipPath: 'inset(' + g.cT + 'px 0px ' + g.cB + 'px 0px)' });
+    const aside = (y, dir) => 'translate3d(0,' + (y - 1 + dir * Math.min(160, vh * 0.18)).toFixed(1) + 'px,0)';
+    const onScreen = (y) => y + slideH > 0 && y < vh;
+
+    function fill(i) {
+      const d = slides[i].dataset;
+      const v = slides[i]._video;
+      const len = clipLength(v && v.duration);
+      hdTitle.textContent = (d.title || '').trim();
+      const values = {
+        client: d.client,
+        category: d.category,
+        year: d.year,
+        role: (d.role || '').split(',').map(t => t.trim()).filter(Boolean).join('\n'),
+        length: len ? len + ' · Loop' : ''
+      };
+      rows.forEach((row) => {
+        const val = (values[row.dataset.field] || '').trim();
+        row.querySelector('dd').textContent = val;
+        row.hidden = !val;
+      });
+      const desc = (d.desc || '').trim();
+      hdDesc.textContent = desc;
+      hdDesc.hidden = !desc;
+      hdNo.textContent = 'N°' + pad2(i + 1) + ' / ' + pad2(N);
+    }
+
+    // the time where the reader is, as the sample page shows it
+    function tick() {
+      const now = new Date();
+      let time = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+      let zone = '';
+      try {
+        const part = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(now).find(p => p.type === 'timeZoneName');
+        zone = part ? part.value : '';
+      } catch (e) {}
+      hdClock.textContent = time + ' ';
+      const z = document.createElement('span');
+      z.textContent = zone;
+      hdClock.appendChild(z);
+    }
+
+    function stopAnims() {
+      anims.forEach(a => { try { a.cancel(); } catch (e) {} });
+      anims = [];
+    }
+    function run(el, frames, opts) {
+      const a = el.animate(frames, Object.assign({ fill: 'both' }, opts, reduced ? { duration: 1, delay: 0 } : {}));
+      anims.push(a);
+      return a;
+    }
+
+    function openDetail(i) {
+      if (detailFor >= 0 || busy) return;
+      busy = true;
+      detailFor = i;
+      const sl = slides[i];
+      const v = sl._video;
+      fill(i);
+      if (v && !(v.duration > 0)) {
+        v.addEventListener('loadedmetadata', () => { if (detailFor === i) fill(i); }, { once: true });
+      }
+      geo = geometry(i);
+      detail.style.setProperty('--hd-band', geo.band + 'px');
+      document.documentElement.classList.add('lb-lock');
+
+      stopAnims();
+      sl.style.transformOrigin = '50% 0';
+      sl.style.zIndex = '2';
+      const moved = run(sl, [atReel(geo.y), inBand(geo)], { duration: 860, easing: EASE_IO });
+      slides.forEach((o, j) => {
+        if (j === i) return;
+        o._want = false;
+        if (o._video && !o._video.paused) o._video.pause();
+        const y = slideY(j);
+        if (!onScreen(y)) return;
+        run(o, [{ transform: aside(y, 0), opacity: 1 }, { transform: aside(y, y < geo.y ? -1 : 1), opacity: 0 }],
+            { duration: 560, easing: 'cubic-bezier(.4,0,.2,1)' });
+      });
+      sl._want = true;
+      safePlay(v);
+
+      detail.classList.add('is-on');
+      detail.setAttribute('aria-hidden', 'false');
+      tick();
+      clockTimer = setInterval(tick, 1000);
+      let ended = false;
+      const finish = () => { if (!ended) { ended = true; busy = false; } };
+      moved.finished.then(finish, finish);
+      setTimeout(finish, 1200);
+    }
+
+    function closeDetail() {
+      if (detailFor < 0 || busy) return;
+      busy = true;
+      const i = detailFor;
+      const sl = slides[i];
+      const from = geo;
+      const home = slideY(i);
+      detail.classList.remove('is-on');
+      detail.setAttribute('aria-hidden', 'true');
+      clearInterval(clockTimer);
+
+      stopAnims();
+      const moved = run(sl, [inBand(from), atReel(home)], { duration: 760, delay: 140, easing: EASE_IO });
+      slides.forEach((o, j) => {
+        if (j === i) return;
+        const y = slideY(j);
+        if (!onScreen(y)) return;
+        run(o, [{ transform: aside(y, y < home ? -1 : 1), opacity: 0 }, { transform: aside(y, 0), opacity: 1 }],
+            { duration: 620, delay: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+
+      let ended = false;
+      const finish = () => {
+        if (ended) return;
+        ended = true;
+        stopAnims();
+        sl.style.transformOrigin = '';
+        sl.style.zIndex = '';
+        document.documentElement.classList.remove('lb-lock');
+        detailFor = -1;
+        geo = null;
+        busy = false;
+        slides.forEach(touch);
+        render();
+      };
+      Promise.all(anims.map(a => a.finished)).then(finish, finish);
+      setTimeout(finish, 1400);                    // safety net
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!armed || leaving || detailFor >= 0) return;
+      if (e.target.closest && e.target.closest('a, button, .topbar, .home-detail')) return;
+      const i = slideAt(e.clientY);
+      if (i >= 0) openDetail(i);
+    });
+    hdBack.addEventListener('click', closeDetail);
+    hdHero.addEventListener('click', closeDetail);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && detailFor >= 0) closeDetail();
+    });
+    // Held still while open: on a phone a drag would otherwise scroll the page
+    // (and the reel under the band) - only the sheet of details may scroll.
+    document.addEventListener('touchmove', (e) => {
+      if (detailFor >= 0 && !(e.target.closest && e.target.closest('.hd-sheet'))) e.preventDefault();
+    }, { passive: false });
+    // a new window size: refit the band at once, without playing anything
+    window.addEventListener('resize', () => {
+      if (detailFor < 0 || busy) return;
+      geo = geometry(detailFor);
+      detail.style.setProperty('--hd-band', geo.band + 'px');
+      stopAnims();
+      run(slides[detailFor], [inBand(geo), inBand(geo)], { duration: 1 });
+      slides.forEach((o, j) => { if (j !== detailFor) run(o, [{ opacity: 0 }, { opacity: 0 }], { duration: 1 }); });
+    });
+  }
 })();
 
 
@@ -3561,6 +3795,161 @@ document.addEventListener('DOMContentLoaded', () => {
       lbImg.style.transform = 'none';
       fitFrame();
     }
+  });
+})();
+
+/* =========================================================
+   ABOUT — CV VIEWER
+   VIEW CV opens the CV over the page instead of sending the reader
+   away. It grows out of the button itself - centre on centre, from the
+   button's width to its own, fading up as it leaves - and shrinks back
+   into it on close: the X, a click on the dark around it, or Esc. The
+   page behind is locked while it is open, and the CV is sized to fit the
+   screen whole (see .cv-lb-frame). A modified click (new tab, save link) is left to the browser,
+   and without script the button simply opens the picture.
+   ========================================================= */
+(function () {
+  const BTN = '.about-cv .cv-view';
+  const lb = document.getElementById('cvLb');
+  if (!lb || !document.querySelector(BTN)) return;
+  // Looked up when needed, never held: the About copy is re-measured by
+  // rewriting its columns, and a held button can be one no longer on the page.
+  const button = () => document.querySelector(BTN);
+  const onButtonEvent = (e) => !!(e.target && e.target.closest && e.target.closest(BTN));
+  const scroller = lb.querySelector('.cv-lb-scroll');
+  const frame = lb.querySelector('.cv-lb-frame');
+  const img = frame && frame.querySelector('img');
+  const closeBtn = document.getElementById('cvLbClose');
+  if (!scroller || !frame || !img || !closeBtn) return;
+
+  const SRC = button().getAttribute('href');
+  const DUR = 520;
+  const EASE = 'cubic-bezier(.22,1,.36,1)';
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let isOpen = false;
+  let busy = false;
+  let anim = null;
+
+  // Fetched as soon as the reader shows interest in the button, so by the
+  // click it is usually decoded already.
+  const load = () => { if (!img.getAttribute('src')) img.src = SRC; };
+  ['pointerover', 'focusin', 'touchstart'].forEach((ev) =>
+    document.addEventListener(ev, (e) => { if (onButtonEvent(e)) load(); }, { passive: true }));
+
+  // The frame's transform that sets it on the button: centre on centre, as
+  // wide as the button. Measured on the untransformed frame, with the viewer
+  // scrolled wherever the reader has left it.
+  function onButton() {
+    const f = frame.getBoundingClientRect();
+    const b = button().getBoundingClientRect();
+    const k = b.width / Math.max(1, f.width);
+    const dx = (b.left + b.width / 2) - (f.left + f.width / 2);
+    const dy = (b.top + b.height / 2) - (f.top + f.height / 2);
+    return 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(' + k.toFixed(4) + ')';
+  }
+
+  function run(keyframes) {
+    if (anim) anim.cancel();
+    frame.style.willChange = 'transform, opacity';
+    anim = frame.animate(keyframes, { duration: reduce ? 1 : DUR, easing: EASE, fill: 'forwards' });
+    return anim;
+  }
+
+  function settle() {
+    if (anim) { anim.cancel(); anim = null; }
+    frame.style.transform = '';
+    frame.style.opacity = '';
+    frame.style.willChange = '';
+  }
+
+  function open() {
+    if (isOpen || busy) return;
+    isOpen = busy = true;
+    load();
+    scroller.scrollTop = 0;
+    const from = onButton();
+    // parked on the button, invisible, until the picture is ready to show
+    frame.style.transform = from;
+    frame.style.opacity = '0';
+    lb.style.transition = '';                      // undo the last close's hard hide,
+    lb.style.visibility = '';                      // so the dark fades up as before
+    lb.classList.add('is-on');
+    lb.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('lb-lock');
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      settle();
+      busy = false;
+      closeBtn.focus({ preventScroll: true });
+    };
+    const decoded = img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+    Promise.race([decoded, new Promise((r) => setTimeout(r, 300))]).then(() => {
+      if (done) return;
+      const a = run([
+        { transform: from, opacity: 0 },
+        { opacity: 1, offset: 0.3 },
+        { transform: 'none', opacity: 1 }
+      ]);
+      frame.style.transform = '';
+      frame.style.opacity = '';
+      a.finished.then(finish).catch(finish);
+      setTimeout(finish, DUR + 200);               // safety net
+    });
+  }
+
+  function close() {
+    if (!isOpen || busy) return;
+    busy = true;
+    const to = onButton();
+    lb.classList.remove('is-on');                  // the dark and the X fade alongside
+    const a = run([
+      { transform: 'none', opacity: 1 },
+      { opacity: 1, offset: 0.7 },
+      { transform: to, opacity: 0 }
+    ]);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      /* Hide the viewer outright before the frame is put back. The stylesheet
+         keeps it visible a little longer (its visibility waits out the fade of
+         the dark behind it), and resetting the frame inside that window brought
+         the CV back at full size for a moment - the flash after closing. Its
+         transition goes too, or the stylesheet's delay would hold even this
+         hide back; the dark has faded out by now anyway. The frame is left
+         transparent as well, until the next open parks it on the button. */
+      lb.style.transition = 'none';
+      lb.style.visibility = 'hidden';
+      settle();
+      frame.style.opacity = '0';
+      lb.setAttribute('aria-hidden', 'true');
+      document.documentElement.classList.remove('lb-lock');
+      isOpen = busy = false;
+      const b = button();
+      if (b) b.focus({ preventScroll: true });
+    };
+    a.finished.then(finish).catch(finish);
+    setTimeout(finish, DUR + 200);                 // safety net
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!onButtonEvent(e)) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    open();
+  });
+  closeBtn.addEventListener('click', close);
+  // the dark around the CV closes it; the CV itself is for reading
+  lb.addEventListener('click', (e) => {
+    if (!frame.contains(e.target) && !closeBtn.contains(e.target)) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!isOpen) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'Tab') { e.preventDefault(); closeBtn.focus(); }   // keep focus in the viewer
   });
 })();
 

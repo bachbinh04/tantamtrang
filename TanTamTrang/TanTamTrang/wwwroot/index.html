@@ -4,9 +4,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TAN — Home</title>
+  <title>HOME - TTT</title>
+  <meta name="description" content="Portfolio of Dao Trong Tan (TTT), a visual designer working in 3D, motion, poster, typography, photography and experience design. Selected works and contact.">
+  <link rel="canonical" href="https://tantamtrang.com/">
+  <link rel="icon" type="image/png" href="images/favicon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TanTamTrang">
+  <meta property="og:title" content="HOME - TTT">
+  <meta property="og:description" content="Portfolio of Dao Trong Tan (TTT), a visual designer working in 3D, motion, poster, typography, photography and experience design. Selected works and contact.">
+  <meta property="og:url" content="https://tantamtrang.com/">
+  <meta property="og:image" content="https://tantamtrang.com/images/og-cover.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=121">
+  <link rel="stylesheet" href="style.css?v=132">
 </head>
 
 <body class="home-video-body">
@@ -72,36 +84,44 @@
        opened, and a phone would have started on the 1080p file before the
        script could choose. script.js plays each clip as it comes on screen. -->
   <main class="home-reel" id="homeReel">
+    <!-- Clicking a clip opens its detail view (script.js). Its words come from
+         the attributes on each slide below, in reel order:
+           data-title     the big title in the corner of the clip
+           data-client    Client          data-category  Category
+           data-year      Year            data-role      Role (commas: one per line)
+           data-desc      the description on the right
+         Leave one empty and that line is not shown; the length is read from the
+         clip itself. The titles are placeholders taken from the file names. -->
     <div class="home-reel-stage" id="homeReelStage" aria-hidden="true">
-      <div class="home-slide">
+      <div class="home-slide" data-title="BUGS" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/bugs-home.mp4"
                poster="images/poster/bugs-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="CITY" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/city-home.mp4"
                poster="images/poster/city-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="FISH" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/fish-home.mp4"
                poster="images/poster/fish-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="VIDEO" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/video-home.mp4"
                poster="images/poster/video-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="CANYON" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/canyon-home.mp4"
                poster="images/poster/canyon-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="MONO" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/mono-home.mp4"
                poster="images/poster/mono-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="EMBER" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/ember-home.mp4"
                poster="images/poster/ember-home.jpg" muted loop playsinline preload="none"></video>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-title="C-WORKS" data-client="" data-category="" data-year="" data-role="" data-desc="">
         <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/c-works.mp4"
                poster="images/poster/c-works.jpg" muted loop playsinline preload="none"></video>
       </div>
@@ -109,11 +129,36 @@
     <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
   </main>
 
+  <!-- The detail view a clip opens (script.js): the clip settles into a band
+       across the top with its title in the corner, the rest of the reel goes,
+       and its details come up below on black. -->
+  <section class="home-detail" id="homeDetail" aria-hidden="true" aria-label="Clip details">
+    <div class="hd-shade" aria-hidden="true"></div>
+    <button class="hd-hero" id="hdHero" type="button" aria-label="Back to the reel"></button>
+    <div class="hd-title-mask"><h2 class="hd-title" id="hdTitle"></h2></div>
+    <div class="hd-sheet">
+      <div class="hd-body">
+        <div class="hd-left">
+          <button class="hd-back" id="hdBack" type="button">Back</button>
+          <dl class="hd-rows">
+            <div class="hd-row" data-field="client"><dt>Client</dt><dd></dd></div>
+            <div class="hd-row" data-field="category"><dt>Category</dt><dd></dd></div>
+            <div class="hd-row" data-field="year"><dt>Year</dt><dd></dd></div>
+            <div class="hd-row" data-field="role"><dt>Role</dt><dd></dd></div>
+            <div class="hd-row" data-field="length"><dt>Length</dt><dd></dd></div>
+          </dl>
+        </div>
+        <p class="hd-desc" id="hdDesc" hidden></p>
+      </div>
+      <div class="hd-foot"><span id="hdNo"></span><span class="hd-clock" id="hdClock"></span></div>
+    </div>
+  </section>
+
   <!-- Libraries for the 3D intro -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-  <script src="script.js?v=121"></script>
+  <script src="script.js?v=132"></script>
 </body>
 
 </html>

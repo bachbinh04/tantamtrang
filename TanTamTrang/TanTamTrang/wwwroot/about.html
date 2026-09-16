@@ -3,9 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TAN — About</title>
+  <title>ABOUT - TTT</title>
+  <meta name="description" content="About Dao Trong Tan (TTT): background, skills, experience and CV of a visual designer working in 3D, motion and graphic design.">
+  <link rel="canonical" href="https://tantamtrang.com/about.html">
+  <link rel="icon" type="image/png" href="images/favicon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TanTamTrang">
+  <meta property="og:title" content="ABOUT - TTT">
+  <meta property="og:description" content="About Dao Trong Tan (TTT): background, skills, experience and CV of a visual designer working in 3D, motion and graphic design.">
+  <meta property="og:url" content="https://tantamtrang.com/about.html">
+  <meta property="og:image" content="https://tantamtrang.com/images/og-cover.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=121">
+  <link rel="stylesheet" href="style.css?v=132">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -60,10 +72,11 @@
         <p id="rightBody" class="is-long"><span class="bio-line">I am a Communication Design student at</span><span class="bio-line">RMIT University with a strong interest in</span><span class="bio-line">visual-led, research-driven design. I am</span><span class="bio-line">drawn to ideas that feel unfamiliar, visually</span><span class="bio-line">distinctive and meaningful rather than</span><span class="bio-line">simply attractive. Research is an important</span><span class="bio-line">part of my process because it gives the</span><span class="bio-line">visual a reason to exist and helps me</span><span class="bio-line">develop concepts that go beyond obvious</span><span class="bio-line">solutions. My current interests include</span><span class="bio-line">photography, 3D and experience design,</span><span class="bio-line">and I enjoy combining different disciplines</span><span class="bio-line">to create stronger and more memorable</span><span class="bio-line">outcomes. I want my work to make people</span><span class="bio-line">stop, look closer and remember the idea</span><span class="bio-line">behind it. I am not interested in developing</span><span class="bio-line">one fixed style; I am more interested in</span><span class="bio-line">building a recognisable creative point of</span><span class="bio-line">view. My long-term ambition is to become</span><span class="bio-line">an Art Director and lead projects where</span><span class="bio-line">concept, visual direction and</span><span class="bio-line">experimentation are equally important.</span></p>
         <!-- Shown on the Resume face only (script.js toggles #aboutCv). -->
         <div id="aboutCv" class="about-cv is-empty">
-          <a href="https://www.behance.net/gallery/240046649/Resume/modules/1382585169"
+          <!-- Opens the CV over the page (script.js); without script it opens the picture. -->
+          <a href="images/CV.png"
              class="cv-btn cv-view"
-             target="_blank"
-             rel="noopener noreferrer">VIEW CV ↗</a>
+             aria-haspopup="dialog"
+             aria-controls="cvLb">VIEW CV ↗</a>
           <a href="images/CV.png"
              class="cv-btn cv-download"
              download="TanTamTrang-CV.png">DOWNLOAD CV ↓</a>
@@ -82,6 +95,17 @@
     <span>© TAN 2026</span>
     <a href="contact.html">Open Contact ↑</a>
   </footer>
-  <script src="script.js?v=121"></script>
+
+  <!-- The CV viewer VIEW CV opens (script.js). The picture is only fetched once
+       the reader shows interest in the button. -->
+  <div class="cv-lb" id="cvLb" role="dialog" aria-modal="true" aria-label="CV" aria-hidden="true">
+    <div class="cv-lb-scroll">
+      <div class="cv-lb-frame">
+        <img alt="Dao Trong Tan - resume" width="1920" height="2716" decoding="async">
+      </div>
+    </div>
+    <button class="photo-lb-close cv-lb-close" id="cvLbClose" type="button" aria-label="Close CV">&times;</button>
+  </div>
+  <script src="script.js?v=132"></script>
 </body>
 </html>
