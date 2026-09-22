@@ -7,7 +7,10 @@
   <title>HOME - TTT</title>
   <meta name="description" content="Portfolio of Dao Trong Tan (TTT), a visual designer working in 3D, motion, poster, typography, photography and experience design. Selected works and contact.">
   <link rel="canonical" href="https://tantamtrang.com/">
-  <link rel="icon" type="image/png" href="images/favicon-192.png">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/favicon-192.png">
+  <link rel="apple-touch-icon" href="images/favicon-192.png">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TanTamTrang">
   <meta property="og:title" content="HOME - TTT">
@@ -17,115 +20,139 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=140">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="home.css?v=10">
+  <link rel="preload" as="image" href="images/home/hero-portrait.jpg">
 </head>
 
-<body class="home-video-body">
+<body class="hp">
 
-  <!-- Intro Preloader -->
-  <div id="camcorder-preloader" data-nosnippet>
-    <div class="camcorder-ui">
-      <h1 class="loading-title">TANTAMTRANG</h1>
-    </div>
-  </div>
-
-  <!-- 3D intro canvas -->
-  <div id="canvas-container">
-    <canvas id="webgl-canvas"></canvas>
-  </div>
-
-  <div class="page-transition" id="pageTransition" aria-hidden="true" data-nosnippet>
-    <div class="transition-frame transition-frame-1"></div>
-    <div class="transition-frame transition-frame-2"></div>
-    <div class="transition-frame transition-frame-3"></div>
-    <div class="transition-frame transition-frame-4"></div>
-    <div class="transition-frame transition-frame-5"></div>
-    <div class="transition-ui">
-      <span id="transitionFrom">CURRENT</span>
-      <span>→</span>
-      <span id="transitionTo">NEXT</span>
-    </div>
-  </div>
-  <div class="page-enter-curtain" id="pageEnterCurtain"></div>
-
-  <!-- Home <-> Works transition -->
-  <div class="hw-transition" id="hwTransition" aria-hidden="true" data-nosnippet>
-    <div class="hw-frame hw-frame-1"></div>
-    <div class="hw-frame hw-frame-2"></div>
-    <div class="hw-frame hw-frame-3"></div>
-    <div class="hw-frame hw-frame-4"></div>
-    <div class="hw-frame hw-frame-5"></div>
-    <div class="hw-black"></div>
-    <div class="transition-ui">
-      <span id="hwFrom">HOME</span>
-      <span>→</span>
-      <span id="hwTo">WORKS</span>
-    </div>
-  </div>
-
-  <header class="topbar">
-    <div class="brand-static">TanTamTrang</div>
-    <nav class="topnav">
-      <a href="index.html" class="active">Home</a>
+  <!-- Home is its own page now: a bright, gridded portfolio front. It loads
+       home.css only, so nothing here can disturb style.css / script.js, which
+       the other pages still share. -->
+  <header class="hp-header">
+    <a class="hp-brand" href="index.html" aria-label="TanTamTrang home">
+      <span>TANTAMTRANG</span>
+    </a>
+    <nav class="hp-nav" aria-label="Main">
+      <a href="about.html">About</a>
       <a href="works.html">Works</a>
       <a href="contact.html">Contact</a>
-      <a href="about.html">About</a>
     </nav>
   </header>
 
-  <!-- Infinite video reel — clips hosted as GitHub Release assets (CDN-backed,
-       not counted against Pages). Posters ship with the site so each slide
-       shows instantly while its clip streams in.
-       Each clip is on the release twice: 1080p under this name, and a 720p
-       copy named -720.mp4 that script.js swaps in on phones, tablets and slow
-       connections. None of them autoplays or preloads: autoplay overrode
-       preload="none", so all eight began downloading the moment the page
-       opened, and a phone would have started on the 1080p file before the
-       script could choose. script.js plays each clip as it comes on screen. -->
-  <main class="home-reel" id="homeReel">
-    <div class="home-reel-stage" id="homeReelStage" aria-hidden="true">
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/bugs-home.mp4"
-               poster="images/poster/bugs-home.jpg" muted loop playsinline preload="none"></video>
+  <main>
+    <!-- Hero -->
+    <section class="hp-hero">
+      <div class="hp-hero-left">
+        <div class="hp-glow" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="hp-gridfield" aria-hidden="true">
+          <i style="grid-area:1/1/6/4"></i>
+          <i style="grid-area:2/4/10/7"></i>
+          <i style="grid-area:1/9/8/12"></i>
+          <i style="grid-area:4/12/8/15"></i>
+          <i style="grid-area:1/19/18/23"></i>
+          <i style="grid-area:10/2/16/7"></i>
+          <i style="grid-area:16/3/18/5"></i>
+          <i style="grid-area:11/12/14/19"></i>
+          <i style="grid-area:14/14/18/17"></i>
+          <i style="grid-area:8/9/11/12"></i>
+        </div>
+
+        <h1 class="hp-title reveal">Welcome To My Wolrd.</h1>
+
+        <p class="hp-tagline reveal">Visual-led,<br>research-driven<br>design.</p>
+        <a class="hp-viewwork reveal" href="works.html">View My Work <span aria-hidden="true">→</span></a>
       </div>
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/city-home.mp4"
-               poster="images/poster/city-home.jpg" muted loop playsinline preload="none"></video>
+
+      <aside class="hp-hero-right">
+        <figure class="hp-portrait reveal">
+          <img src="images/home/hero-portrait.jpg" width="900" height="1600" alt="Thermal self portrait of Dao Trong Tan">
+        </figure>
+      </aside>
+    </section>
+
+    <!-- Introduction -->
+    <section class="hp-intro">
+      <span class="hp-pill reveal"><span class="dot" style="--c:#9a9a9a"></span>A Brief Introduction</span>
+      <p class="hp-intro-text reveal">I’m Tan, a Communication Design student at RMIT who chases ideas that feel <em class="hl-lime">unfamiliar, distinctive and meaningful</em>. Research gives every visual a reason to exist — across photography, 3D and experience design, I want work that makes people <em class="hl-grad">stop, look closer and remember.</em></p>
+    </section>
+
+    <!-- Gallery -->
+    <section class="hp-glimpse">
+      <div class="hp-glimpse-grid" aria-hidden="true">
+        <i style="grid-area:1/6/3/28"></i>
+        <i style="grid-area:3/28/7/35"></i>
       </div>
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/fish-home.mp4"
-               poster="images/poster/fish-home.jpg" muted loop playsinline preload="none"></video>
+      <h2 class="hp-h2 reveal">A Glimpse into My Work</h2>
+      <div class="hp-gallery">
+        <a href="poster.html" class="hp-tile reveal-blur"><img src="images/home/g-poster.jpg" width="900" height="900" loading="lazy" alt="Made in Vietnam poster"><span class="hp-tile-cap"><b>01</b>Poster<i aria-hidden="true">↗</i></span></a>
+        <a href="3d-video.html" class="hp-tile reveal-blur"><img src="images/home/g-3d.jpg" width="900" height="900" loading="lazy" alt="Dinosaur skull at the Jurassic Era exhibition"><span class="hp-tile-cap"><b>02</b>3D / Video<i aria-hidden="true">↗</i></span></a>
+        <a href="photography.html" class="hp-tile reveal-blur"><img src="images/home/g-photo.jpg" width="900" height="900" loading="lazy" alt="Black and white photograph of a spider"><span class="hp-tile-cap"><b>03</b>Photography<i aria-hidden="true">↗</i></span></a>
+        <a href="digital-art.html" class="hp-tile reveal-blur"><img src="images/home/g-art.jpg" width="900" height="900" loading="lazy" alt="Lighthouse line drawing"><span class="hp-tile-cap"><b>04</b>Digital Art<i aria-hidden="true">↗</i></span></a>
       </div>
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/video-home.mp4"
-               poster="images/poster/video-home.jpg" muted loop playsinline preload="none"></video>
+    </section>
+
+    <!-- Call to action -->
+    <section class="hp-cta">
+      <div class="hp-cta-card reveal">
+        <h2><span class="dot" style="--c:#9a9a9a"></span>Have a project in mind?</h2>
+        <p>Open to freelance projects, collaborations and internships. Let’s make something people stop for.</p>
       </div>
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/canyon-home.mp4"
-               poster="images/poster/canyon-home.jpg" muted loop playsinline preload="none"></video>
-      </div>
-      <div class="home-slide">
-        <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/mono-home.mp4"
-               poster="images/poster/mono-home.jpg" muted loop playsinline preload="none"></video>
-      </div>
-      <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/ember-home.mp4"
-               poster="images/poster/ember-home.jpg" muted loop playsinline preload="none"></video>
-      </div>
-      <div class="home-slide">
-        <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/c-works.mp4"
-               poster="images/poster/c-works.jpg" muted loop playsinline preload="none"></video>
-      </div>
-    </div>
-    <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
+      <a class="hp-btn-outline reveal" href="contact.html">Get In Touch <span aria-hidden="true">→</span></a>
+    </section>
   </main>
 
-  <!-- Libraries for the 3D intro -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <footer class="hp-footer">
+    <div class="hp-footer-top">
+    </div>
+   
+  </footer>
 
-  <script src="script.js?v=140"></script>
+  <script>
+    // Fade sections in as they scroll into view; without IntersectionObserver
+    // (or with reduced motion) everything is simply shown.
+    (function () {
+      var els = document.querySelectorAll('.reveal, .reveal-blur');
+      if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.forEach(function (el) { el.classList.add('in'); });
+        return;
+      }
+      document.documentElement.classList.add('js-reveal');
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+      }, { rootMargin: '0px 0px -8% 0px' });
+      els.forEach(function (el) { io.observe(el); });
+    })();
+
+    // Fade out before following a link to another page of the site
+    // (the same rule as script.js on the other pages).
+    (function () {
+      var leaving = false;
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[href]');
+        if (!link || leaving) return;
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (link.target === '_blank' || link.hasAttribute('download')) return;
+        var url = new URL(link.href, location.href);
+        if (url.origin !== location.origin || !/\.html$|\/$/.test(url.pathname)) return;
+        if (url.pathname === location.pathname) return;
+        e.preventDefault();
+        leaving = true;
+        document.documentElement.classList.add('pf-leave');
+        setTimeout(function () { location.href = url.href; }, 300);
+      });
+      window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        leaving = false;
+        document.documentElement.classList.remove('pf-leave');
+      });
+    })();
+  </script>
 </body>
 
 </html>

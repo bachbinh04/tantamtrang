@@ -9,6 +9,9 @@
 
 # heavy media lives on GitHub Releases, not in the repo
 *.mp4
+# ...except the tiny intro clips: WebGL cannot texture a cross-origin video
+# (Release assets send no CORS header), so these must ship with the site.
+!TanTamTrang/TanTamTrang/wwwroot/media/intro/*.mp4
 *.mov
 *.MOV
 *.cr2

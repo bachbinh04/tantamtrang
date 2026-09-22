@@ -1489,216 +1489,38 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
 
 
 /* ==========================================
-   V9 PAGE TRANSITION CONTROLLER
+   PAGE FADE
+   The page fades in as it opens (theme.css) and fades out before a link
+   to another page of the site is followed. Nothing else.
    ========================================== */
 
 (function () {
-  const overlay = document.getElementById('pageTransition');
-  const hwOverlay = document.getElementById('hwTransition');
-  const wcOverlay = document.getElementById('wcTransition');
-  const fromLabel = document.getElementById('transitionFrom');
-  const toLabel = document.getElementById('transitionTo');
+  const FADE_MS = 300;
+  let leaving = false;
 
-  // Let the entrance curtain animate only after DOM is ready.
-  requestAnimationFrame(() => {
-    document.body.classList.add('page-ready');
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest && e.target.closest('a[href]');
+    if (!link || leaving) return;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (link.target === '_blank' || link.hasAttribute('download')) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin || !/\.html$|\/$/.test(url.pathname)) return;
+    if (url.pathname === location.pathname) return;   // same page, e.g. a #hash
+
+    e.preventDefault();
+    leaving = true;
+    document.documentElement.classList.add('pf-leave');
+    setTimeout(() => {
+      window.dispatchEvent(new Event('page:leave'));
+      location.href = url.href;
+    }, FADE_MS);
   });
 
-  if (!overlay) return;
-
-  const currentFile = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-
-  const pageNames = {
-    'index.html': 'HOME',
-    'works.html': 'WORKS',
-    'contact.html': 'CONTACT',
-    'about.html': 'ABOUT'
-  };
-
-  const currentName = pageNames[currentFile] || 'PAGE';
-
-  /* Decode the pictures a transition will show before it shows them. Frames
-     this size are otherwise decoded the first time they are painted, which on
-     a phone is a hitch in the middle of the wipe. The Home <-> Works frames
-     are warmed once the page has settled, and whichever overlay a click is
-     about to play is given a moment - never more than a quarter of a second -
-     to finish first. */
-  const decodes = new Map();   // url -> promise of the decoded image, kept alive here
-  function predecode(root) {
-    if (!root) return Promise.resolve();
-    const wait = [];
-    root.querySelectorAll('.transition-frame, .hw-frame, .wc-frame, .hw-tear-half, .wc-split-half').forEach((el) => {
-      [getComputedStyle(el, '::before').backgroundImage, getComputedStyle(el).backgroundImage].forEach((bg) => {
-        (bg || '').replace(/url\(["']?([^"')]+)["']?\)/g, (m, url) => {
-          if (!decodes.has(url)) {
-            const img = new Image();
-            img.src = url;
-            decodes.set(url, (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => img));
-          }
-          wait.push(decodes.get(url));
-          return m;
-        });
-      });
-    });
-    return Promise.all(wait);
-  }
-  const ready = (root) => Promise.race([predecode(root), new Promise((r) => setTimeout(r, 250))]);
-  if (hwOverlay) {
-    window.addEventListener('load', () => {
-      const warm = () => predecode(hwOverlay);
-      if ('requestIdleCallback' in window) window.requestIdleCallback(warm, { timeout: 4000 });
-      else setTimeout(warm, 2000);
-    }, { once: true });
-  }
-
-  /* Once the first frame has covered the screen nothing of this page can be
-     seen, so it is told to stop working ('page:leave'): on a phone the clips
-     and loops it kept running were competing with the transition for the same
-     processor. Coming back through the back button undoes it all. */
-  const COVERED_MS = 480;       // the first frame's .46s wipe, and a beat
-  let leaving = false;
-  function leave(navigateMs, href) {
-    setTimeout(() => window.dispatchEvent(new Event('page:leave')), COVERED_MS);
-    setTimeout(() => { window.location.href = href; }, navigateMs);
-  }
+  // Back/forward restores the page from cache - show it again.
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
     leaving = false;
-    [overlay, hwOverlay, wcOverlay].forEach((el) => { if (el) el.classList.remove('active', 'to-works'); });
-  });
-
-  // Arriving on Works straight from the Home -> Works transition:
-  // the frame-5 image is already covering the screen; tear it in half to reveal Works.
-  if (
-    hwOverlay &&
-    currentFile === 'works.html' &&
-    document.documentElement.classList.contains('hw-tear-pending')
-  ) {
-    // permanent: the tear replaces the entrance curtain, keep it suppressed
-    document.documentElement.classList.add('hw-tear-done');
-    hwOverlay.classList.add('active', 'tear');
-    // small wind-up beat, then the rip
-    setTimeout(() => hwOverlay.classList.add('tear-go'), 140);
-    setTimeout(() => {
-      hwOverlay.classList.remove('active', 'tear', 'tear-go');
-      document.documentElement.classList.remove('hw-tear-pending');
-    }, 1050);
-  }
-
-  // Arriving on Works or Contact from the Works <-> Contact transition:
-  // the frame-5 image is already covering the screen; split it apart on a
-  // curved edge to reveal the page.
-  if (
-    wcOverlay &&
-    (currentFile === 'works.html' || currentFile === 'contact.html') &&
-    document.documentElement.classList.contains('wc-split-pending')
-  ) {
-    document.documentElement.classList.add('wc-split-done');
-    wcOverlay.classList.add('active', 'split');
-    setTimeout(() => wcOverlay.classList.add('split-go'), 150);
-    setTimeout(() => {
-      wcOverlay.classList.remove('active', 'split', 'split-go');
-      document.documentElement.classList.remove('wc-split-pending');
-    }, 1200);
-  }
-
-  document.querySelectorAll('a[href]').forEach(link => {
-    const href = link.getAttribute('href');
-
-    if (
-      !href ||
-      href.startsWith('#') ||
-      href.startsWith('mailto:') ||
-      href.startsWith('http://') ||
-      href.startsWith('https://') ||
-      link.target === '_blank'
-    ) {
-      return;
-    }
-
-    let targetFile = href.split('/').pop().split('?')[0].split('#')[0].toLowerCase();
-
-    if (!pageNames[targetFile]) return;
-    if (targetFile === currentFile) return;
-
-    const isHomeWorks =
-      (currentFile === 'index.html' && targetFile === 'works.html') ||
-      (currentFile === 'works.html' && targetFile === 'index.html');
-
-    const isWorksContact =
-      (currentFile === 'works.html' && targetFile === 'contact.html') ||
-      (currentFile === 'contact.html' && targetFile === 'works.html');
-
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      if (leaving) return;        // one transition at a time
-      leaving = true;
-
-      // Works <-> Contact: montage -> hold 1.25s -> curved split reveal (both ways).
-      if (isWorksContact && wcOverlay) {
-        const wcFrom = document.getElementById('wcFrom');
-        const wcTo = document.getElementById('wcTo');
-        if (wcFrom) wcFrom.textContent = currentName;
-        if (wcTo) wcTo.textContent = pageNames[targetFile];
-
-        ready(wcOverlay).then(() => {
-          wcOverlay.classList.remove('active');
-          void wcOverlay.offsetWidth;
-          wcOverlay.classList.add('active');
-
-          try { sessionStorage.setItem('wcSplit', '1'); } catch (e) {}
-          // frame 5 fully covers at ~1.18s; +1.25s hold => navigate at ~2.43s
-          leave(2430, href);
-        });
-        return;
-      }
-
-      // Dedicated transition only between Home and Works (both ways).
-      if (isHomeWorks && hwOverlay) {
-        const hwFrom = document.getElementById('hwFrom');
-        const hwTo = document.getElementById('hwTo');
-        if (hwFrom) hwFrom.textContent = currentName;
-        if (hwTo) hwTo.textContent = pageNames[targetFile];
-
-        // Going to Works: hold the last frame for 1.25s, then jump to Works
-        // where a tear-in-half reveal plays.
-        const toWorks = targetFile === 'works.html';
-
-        ready(hwOverlay).then(() => {
-          hwOverlay.classList.remove('active', 'to-works');
-          if (toWorks) hwOverlay.classList.add('to-works');
-          void hwOverlay.offsetWidth;
-          hwOverlay.classList.add('active');
-
-          if (toWorks) {
-            try { sessionStorage.setItem('hwTear', '1'); } catch (e) {}
-            // frame 5 is fully revealed at ~1.18s; +1.25s hold => navigate at ~2.43s
-            leave(2430, href);
-          } else {
-            leave(1340, href);
-          }
-        });
-        return;
-      }
-
-      fromLabel.textContent = currentName;
-      toLabel.textContent = pageNames[targetFile];
-
-      ready(overlay).then(() => {
-        overlay.classList.remove('active');
-
-        // restart CSS animations reliably
-        void overlay.offsetWidth;
-        overlay.classList.add('active');
-
-        // Hand the last frame (transition-05) over to the destination's
-        // entrance curtain so there is no black frame between them.
-        try { sessionStorage.setItem('ptEnter', '1'); } catch (e) {}
-
-        // Navigate once frame 5 has fully covered the screen (~1.18s) plus a beat.
-        leave(1400, href);
-      });
-    });
+    document.documentElement.classList.remove('pf-leave');
   });
 })();
 

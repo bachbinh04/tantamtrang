@@ -1,0 +1,345 @@
+/* Site theme: carries the Home page's look (home.css) to every other page.
+   Loaded after style.css, so it only restyles - layouts and the behaviour
+   in script.js stay as they were. */
+
+:root {
+  --t-paper: #f2f2f2;
+  --t-muted: rgba(242, 242, 242, .58);
+  --t-rule: rgba(242, 242, 242, .16);
+  --t-rule-strong: rgba(242, 242, 242, .3);
+  --t-grey: #8a8a8a;
+  --t-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --t-ease: cubic-bezier(.2, .7, .2, 1);
+  --t-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  /* Every small "mono" label on the site now sets in Manrope like Home. */
+  --mono: var(--t-font);
+  --bg: #000;
+  --text: var(--t-paper);
+  --muted: var(--t-muted);
+  --line: var(--t-rule);
+}
+
+body {
+  background: #000;
+  color: var(--t-paper);
+  font-family: var(--t-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--t-grain);
+  opacity: .07;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+::selection { background: #fff; color: #000; }
+
+/* style.css hard-codes Arial / Arial Black on a dozen components (book
+   captions, the About copy, project buttons...); one rule brings them all
+   onto Home's typeface. */
+body,
+body *:not(svg):not(svg *) { font-family: var(--t-font) !important; }
+
+/* ---------- Header (same as Home's) ---------- */
+.topbar {
+  height: auto;
+  padding: 22px clamp(16px, 1.3vw, 24px);
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+}
+
+.brand-static {
+  font-family: var(--t-font);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--t-paper);
+  pointer-events: auto;
+}
+
+.topnav {
+  gap: 6px;
+  font-family: var(--t-font);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.topnav a {
+  min-width: 92px;
+  padding: 7px 22px;
+  border: 1px solid var(--t-rule-strong);
+  border-radius: 999px;
+  background: rgba(242, 242, 242, .04);
+  color: var(--t-paper);
+  text-align: center;
+  transition: background .25s, color .25s, border-color .25s;
+}
+
+.topnav a:hover,
+.topnav a.active {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+
+.works-page .topnav a.active::after { display: none; }
+
+/* ---------- Page heads ---------- */
+.kicker,
+.pst-head .small {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--t-rule-strong);
+  border-radius: 999px;
+  font: 500 13px var(--t-font);
+  letter-spacing: .02em;
+  color: var(--t-paper);
+}
+
+.kicker::before,
+.pst-head .small::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px #fff;
+}
+
+.page-title {
+  font-family: var(--t-font);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: .9;
+  background: linear-gradient(90deg, #ffffff 30%, var(--t-grey));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.poster-title {
+  padding-right: 0;
+  font-size: clamp(48px, 9.2vw, 140px);
+}
+
+.poster-intro,
+.ct-lead {
+  font: 400 clamp(15px, 1.2vw, 18px)/1.55 var(--t-font);
+  color: var(--t-muted);
+}
+
+.ct-lead { color: var(--t-paper); }
+
+.poster-back,
+.pst-back {
+  display: inline-block;
+  padding: 9px 18px;
+  border: 1px solid var(--t-rule-strong);
+  border-radius: 999px;
+  font: 500 13px var(--t-font);
+  letter-spacing: 0;
+  color: var(--t-paper);
+  transition: background .25s, color .25s, border-color .25s;
+}
+
+.poster-back:hover,
+.pst-back:hover { background: #fff; border-color: #fff; color: #000; }
+
+/* ---------- Poster-style grids ---------- */
+.pst-item h2 {
+  font: 700 clamp(14px, 1.1vw, 18px)/1.2 var(--t-font);
+  letter-spacing: -.01em;
+}
+
+.pst-item p {
+  font: 400 13px/1.55 var(--t-font);
+  color: var(--t-muted);
+}
+
+.pst-meta {
+  font: 500 11px var(--t-font);
+  letter-spacing: .06em;
+  color: rgba(242, 242, 242, .4);
+}
+
+.pst-img { border-radius: 6px; }
+
+/* ---------- Footer ---------- */
+.footer {
+  margin: 0 clamp(16px, 1.3vw, 24px);
+  padding: 22px 0 26px;
+  border-top: 1px solid var(--t-rule);
+  font: 500 14px var(--t-font);
+  color: var(--t-muted);
+}
+
+.footer a {
+  padding: 6px 14px;
+  border: 1px solid var(--t-rule-strong);
+  border-radius: 999px;
+  color: var(--t-paper);
+  transition: background .25s, color .25s;
+}
+
+.footer a:hover { background: #fff; color: #000; }
+
+/* ---------- Works ---------- */
+/* Works sits on flat black: no grain. */
+.wks-body { background: #000; }
+.wks-body::after { display: none; }
+
+.wks-page { padding-top: 96px; }
+
+.wks-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 32px;
+  padding: clamp(40px, 7vw, 110px) 0 clamp(36px, 5vw, 64px);
+}
+
+.wks-title {
+  position: relative;
+  margin: 18px 0 0;
+  font: 800 clamp(64px, 11vw, 190px)/1.04 var(--t-font);
+  letter-spacing: -.05em;
+}
+
+.wks-title span {
+  display: block;
+  /* Room below the tight line box so the gradient (clipped to the text's
+     box) also reaches descenders like the y in "My". */
+  padding-bottom: .16em;
+  margin-bottom: -.16em;
+  background: linear-gradient(90deg, #ffffff 30%, var(--t-grey));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.wks-title span + span {
+  padding-left: .55em;
+  background: none;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(242, 242, 242, .7);
+}
+
+.wks-aside {
+  position: relative;
+  justify-self: end;
+  max-width: 380px;
+  padding: 22px;
+  border: 1px solid var(--t-rule-strong);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .55);
+  backdrop-filter: blur(14px);
+}
+
+.wks-aside p {
+  margin: 0 0 18px;
+  font: 400 16px/1.5 var(--t-font);
+  color: var(--t-muted);
+}
+
+.wks-aside p strong { color: var(--t-paper); font-weight: 600; }
+
+.wks-index {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--t-rule);
+}
+
+.wks-index li { border-bottom: 1px solid var(--t-rule); }
+
+.wks-index a {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 2px;
+  font: 500 14px var(--t-font);
+  transition: padding .3s var(--t-ease), color .2s;
+}
+
+.wks-index a span { color: var(--t-muted); }
+.wks-index a:hover { padding-left: 10px; }
+
+/* Cards: black and white at rest, the work's own colour on hover - the same
+   rule as Home's "A Glimpse into My Work". */
+.wks-grid .pst-img {
+  position: relative;
+  border: 1px solid var(--t-rule);
+}
+
+.wks-grid .pst-img img {
+  filter: grayscale(1) brightness(.85);
+  transition: transform .8s var(--t-ease), filter .5s ease;
+}
+
+.wks-grid .pst-item:hover .pst-img img,
+.wks-grid .pst-item:focus-visible .pst-img img {
+  filter: grayscale(0) brightness(1);
+  transform: scale(1.05);
+}
+
+.wks-open {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font: 700 13px var(--t-font);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .3s, transform .3s var(--t-ease);
+}
+
+.wks-grid .pst-item:hover .wks-open,
+.wks-grid .pst-item:focus-visible .wks-open { opacity: 1; transform: none; }
+
+.wks-grid .pst-item h2 { font-size: clamp(18px, 1.5vw, 24px); }
+.wks-grid .pst-item h2::after { content: none; }
+
+/* ---------- Phones ---------- */
+@media (max-width: 900px) {
+  .topnav a { min-width: 0; padding: 6px 14px; font-size: 13px; }
+  .wks-hero { grid-template-columns: 1fr; }
+  .wks-aside { justify-self: stretch; max-width: none; }
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 14px 16px; }
+  .brand-static { font-size: 16px; }
+  .topnav { gap: 4px; }
+  .topnav a { padding: 5px 10px; font-size: 12px; }
+}
+
+/* ---------- Page fade ----------
+   Opens with a short fade-in; script.js adds .pf-leave to fade out before
+   following a link to another page. */
+@keyframes pf-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pf-out { from { opacity: 1; } to { opacity: 0; } }
+body { animation: pf-in .45s ease both; }
+/* an animation too: the fade-in's fill would override a plain transition */
+html.pf-leave body { animation: pf-out .3s ease forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
+  html.pf-leave body { animation: none; }
+}
