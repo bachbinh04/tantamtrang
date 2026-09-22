@@ -151,6 +151,103 @@ img{max-width:100%;display:block}
 /* EXPERIENCE DESIGN (Works sub-page): the case study as a column of pages,
    each at its own proportion - these are laid-out spreads, so nothing is
    cropped. */
+/* EXPERIENCE DESIGN — four project buttons under the title; the one chosen
+   turns white and its case study opens beneath them. */
+.ed-menu{
+  max-width:1240px;
+  margin:0 auto clamp(40px,7vh,80px);
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:clamp(10px,1.2vw,18px);
+}
+.ed-tab{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:28px;
+  min-height:clamp(150px,15vw,200px);
+  padding:clamp(16px,1.6vw,24px);
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:6px;
+  background:transparent;
+  color:#f2f2ee;
+  text-align:left;
+  cursor:pointer;
+  transition:background-color .3s ease, color .3s ease, border-color .3s ease, transform .3s cubic-bezier(.22,1,.36,1);
+}
+.ed-tab:hover,
+.ed-tab:focus-visible{
+  border-color:#fff;
+  transform:translateY(-3px);
+}
+.ed-tab-no,
+.ed-tab-go{
+  font:10px var(--mono);
+  letter-spacing:.14em;
+  color:rgba(242,242,238,.6);
+}
+.ed-tab-title{
+  font:900 clamp(17px,1.7vw,26px)/1.05 'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
+  letter-spacing:-.02em;
+  text-transform:uppercase;
+}
+.ed-tab.is-on{
+  background:#f2f2ee;
+  border-color:#f2f2ee;
+  color:#050505;
+  transform:none;
+}
+.ed-tab.is-on .ed-tab-no,
+.ed-tab.is-on .ed-tab-go{ color:rgba(5,5,5,.6); }
+
+.ed-article{
+  scroll-margin-top:90px;
+}
+.ed-article.is-in{
+  animation:edArticleIn .7s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes edArticleIn{
+  from{ opacity:0; transform:translateY(28px); }
+  to  { opacity:1; transform:none; }
+}
+.ed-article-head{
+  max-width:1240px;
+  margin:0 auto clamp(24px,4vh,40px);
+  padding-top:clamp(20px,3vh,32px);
+  border-top:1px solid var(--line);
+}
+.ed-article-title{
+  margin-top:14px;
+  font-size:clamp(30px,4.4vw,64px);
+  line-height:.95;
+  letter-spacing:-.05em;
+}
+.ed-article-intro{
+  margin-top:18px;
+  max-width:560px;
+  font:12px/1.8 var(--mono);
+  color:var(--muted);
+}
+.ed-soon{
+  max-width:1240px;
+  margin:0 auto;
+  padding:clamp(60px,14vh,140px) 0 18vh;
+  font:11px var(--mono);
+  letter-spacing:.14em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+@media(max-width:900px){
+  .ed-menu{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:480px){
+  .ed-menu{ grid-template-columns:minmax(0,1fr); }
+  .ed-tab{ min-height:0; gap:18px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .ed-article.is-in{ animation:none; }
+  .ed-tab{ transition:none; }
+}
 .ed-deck{
   max-width:1240px;
   margin:0 auto;
@@ -410,12 +507,14 @@ img{max-width:100%;display:block}
    spans 2, a half spans 3, a lead frame spans all 6. */
 .photo-grid{
   display:grid;
-  grid-template-columns:repeat(6,1fr);
-  column-gap:0;
-  row-gap:clamp(54px,6.5vw,110px);
-  /* cancel .poster-page's 26px side padding so the rows reach the edges */
-  margin:0 -26px;
-  padding:2px 0 18vh;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  /* an even gutter between frames, and the caption's own line plus a little
+     more between rows, so the sheet reads as separate pictures */
+  column-gap:clamp(10px,1.3vw,22px);
+  row-gap:clamp(26px,2.8vw,44px);
+  max-width:1680px;
+  margin:0 auto;
+  padding:clamp(22px,3vw,40px) clamp(0px,2vw,24px) 14vh;
   border-top:1px solid var(--line);
 }
 .photo-grid figure{
@@ -434,8 +533,7 @@ img{max-width:100%;display:block}
   object-position:center;
   display:block;
   background:#0d0d0d;
-  /* No hover scale here on purpose: with no gutter it would climb over the
-     neighbouring frame, and it would also move the box the lightbox measures
+  /* No hover scale on purpose: it would move the box the lightbox measures
      to fly the picture back into. */
   filter:grayscale(.06) brightness(.9);
   transition:filter .4s ease;
@@ -445,7 +543,7 @@ img{max-width:100%;display:block}
 .photo-grid .ph-half{ grid-column:auto / span 3; }
 .photo-grid .ph-half img{ aspect-ratio:3/2; }
 .photo-grid .ph-full{ grid-column:1 / -1; }
-.photo-grid .ph-full img{ aspect-ratio:21/9; object-position:center 58%; }
+.photo-grid .ph-full img{ aspect-ratio:2/1; object-position:center 58%; }
 
 /* A row carrying a single frame: the rest of the row is deliberately left
    empty. Auto-placement never runs backwards, so pinning the NEXT frame to
@@ -459,8 +557,8 @@ img{max-width:100%;display:block}
   justify-content:space-between;
   align-items:baseline;
   gap:14px;
-  margin-top:11px;
-  padding:0 clamp(10px,1.2vw,16px);
+  margin-top:10px;
+  padding:0;
   font:9px var(--mono);
   letter-spacing:.11em;
   color:var(--muted);
@@ -485,6 +583,7 @@ img{max-width:100%;display:block}
   margin:0 auto;
   column-gap:clamp(18px,2.4vw,32px);
   row-gap:clamp(58px,6vw,96px);
+  padding:2px 0 18vh;               /* as it was before the photo sheet got its gutter */
 }
 .photo-grid.photo-grid-art img{
   aspect-ratio:auto;
@@ -500,8 +599,10 @@ img{max-width:100%;display:block}
 
 @media(max-width:900px){
   .photo-grid{
-    grid-template-columns:repeat(2,1fr);
-    row-gap:clamp(38px,5.5vw,64px);
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:10px;
+    row-gap:26px;
+    padding-inline:0;
   }
   .photo-grid figure,
   .photo-grid .ph-half,
@@ -539,6 +640,193 @@ img{max-width:100%;display:block}
   .photo-grid.photo-grid-art .ph-centre{ grid-column:1 / -1; }
   .photo-grid.photo-grid-art .ph-centre img,
   .photo-grid.photo-grid-art .ph-centre figcaption{ max-width:min(100%,340px); margin-inline:auto; }
+}
+
+/* PHOTOGRAPHY — in fives. One large frame on the left, as tall as two rows,
+   and a two-by-two of small frames beside it, all landscape 3:2 with the
+   same gap across and down. The large column is sized so its frame is
+   exactly 3:2 too: with w the small width and g the gap, two rows and a gap
+   stand 2w/1.5 + g tall, so the large frame is 2w + 1.5g wide, and
+   w = (100% - 3.5g) / 4. The number sits on the picture's corner, so nothing
+   adds height between rows. One column on a phone. (Digital Art keeps its
+   own gallery layout above.) */
+.photo-grid.photo-grid-even{
+  --g:clamp(10px,1.2vw,20px);
+  grid-template-columns:calc((100% - 3.5 * var(--g)) / 2 + 1.5 * var(--g)) minmax(0,1fr) minmax(0,1fr);
+  gap:var(--g);
+  padding-inline:0;
+}
+.photo-grid.photo-grid-even > figure:nth-child(5n+1){
+  grid-column:1 / span 1;
+  grid-row:span 2;
+}
+.photo-grid.photo-grid-even > figure:nth-child(5n+1) > img{
+  aspect-ratio:auto;
+  height:100%;
+}
+.photo-grid.photo-grid-even > figure{
+  grid-column:auto / span 1;
+  position:relative;
+}
+.photo-grid.photo-grid-even > figure > img{
+  aspect-ratio:3/2;
+  height:auto;
+  object-position:center;
+}
+.photo-grid.photo-grid-even > figure > figcaption{
+  position:absolute;
+  left:10px;
+  bottom:8px;
+  margin:0;
+  padding:0;
+  color:rgba(255,255,255,.82);
+  text-shadow:0 1px 6px rgba(0,0,0,.6);
+  pointer-events:none;
+}
+@media(max-width:900px){
+  .photo-grid.photo-grid-even{ --g:8px; }
+}
+@media(max-width:560px){
+  .photo-grid.photo-grid-even{ --g:10px; grid-template-columns:minmax(0,1fr); }
+  .photo-grid.photo-grid-even > figure:nth-child(5n+1){ grid-row:auto; }
+  .photo-grid.photo-grid-even > figure:nth-child(5n+1) > img{ aspect-ratio:3/2; height:auto; }
+}
+
+/* POSTER — a staircase grid. Four columns, each column dropped a step below
+   the one to its left, so every row runs downhill from left to right. Each
+   poster is shown whole at its own ratio, with its name, a line about it and
+   a small meta row under it. Fewer columns on narrower screens, and one plain
+   column on a phone. Click opens the photography lightbox. */
+.pst-page{
+  padding:118px clamp(18px,3vw,48px) 0;
+}
+.pst-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:20px;
+  padding-bottom:16px;
+  margin-bottom:clamp(28px,5vh,56px);
+  border-bottom:1px solid var(--line);
+}
+.pst-head .small{
+  font:10px var(--mono);
+  color:var(--muted);
+  letter-spacing:.08em;
+}
+.pst-back{
+  font:10px var(--mono);
+  letter-spacing:.08em;
+  padding-bottom:4px;
+  border-bottom:1px solid #666;
+}
+.pst-grid{
+  --cols:4;
+  --step:clamp(28px,4.5vw,80px);
+  --gap-x:clamp(12px,1.4vw,24px);
+  --gap-y:clamp(24px,2.6vw,44px);
+  display:grid;
+  grid-template-columns:repeat(var(--cols), minmax(0,1fr));
+  column-gap:var(--gap-x);
+  row-gap:var(--gap-y);
+  align-items:start;
+  padding-bottom:clamp(60px,12vh,140px);
+}
+.pst-item:nth-child(4n+2){ margin-top:var(--step); }
+.pst-item:nth-child(4n+3){ margin-top:calc(var(--step) * 2); }
+.pst-item:nth-child(4n+4){ margin-top:calc(var(--step) * 3); }
+.pst-item{
+  margin:0;
+  min-width:0;
+}
+.pst-img{
+  overflow:hidden;
+  background:#0d0d0d;
+  cursor:zoom-in;
+}
+.pst-img img{
+  width:100%;
+  height:auto;
+  transition:transform .6s cubic-bezier(.22,1,.36,1), filter .4s ease;
+}
+.pst-item:hover .pst-img img{
+  transform:scale(1.03);
+}
+.pst-item.is-open img{ visibility:hidden; }
+.pst-item figcaption{
+  padding-top:14px;
+}
+.pst-item h2{
+  font:700 clamp(13px,1vw,16px)/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing:0;
+  color:#f2f2ee;
+}
+.pst-item p{
+  margin-top:8px;
+  font:11px/1.6 var(--mono);
+  color:#8a8a8a;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.pst-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:14px;
+  font:9px var(--mono);
+  letter-spacing:.08em;
+  color:#5f5f5f;
+}
+/* script.js adds .pst-js, then lifts each poster in as it scrolls into view */
+.pst-grid.pst-js .pst-item{
+  opacity:0;
+  transform:translateY(36px);
+  transition:opacity .8s ease, transform .9s cubic-bezier(.22,1,.36,1);
+}
+.pst-grid.pst-js .pst-item.is-in{
+  opacity:1;
+  transform:none;
+}
+/* With script the grid is dealt into real columns (script.js), so a poster
+   sits right under the one above it in its own column instead of waiting
+   for the whole row - the staircase then comes from each column's top. */
+.pst-grid.pst-cols{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--gap-x);
+}
+.pst-col{
+  flex:1 1 0;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap-y);
+}
+.pst-grid.pst-cols .pst-item:nth-child(n){ margin-top:0; }
+.pst-col:nth-child(2){ padding-top:var(--step); }
+.pst-col:nth-child(3){ padding-top:calc(var(--step) * 2); }
+.pst-col:nth-child(4){ padding-top:calc(var(--step) * 3); }
+@media(max-width:1100px){
+  .pst-grid{ --cols:3; --step:clamp(28px,6vw,70px); }
+  .pst-item:nth-child(n){ margin-top:0; }
+  .pst-item:nth-child(3n+2){ margin-top:var(--step); }
+  .pst-item:nth-child(3n+3){ margin-top:calc(var(--step) * 2); }
+}
+@media(max-width:720px){
+  .pst-grid{ --cols:2; --step:clamp(24px,9vw,60px); }
+  .pst-item:nth-child(n){ margin-top:0; }
+  .pst-item:nth-child(2n){ margin-top:var(--step); }
+}
+@media(max-width:460px){
+  .pst-page{ padding-top:96px; }
+  .pst-grid{ --cols:1; --gap-y:36px; }
+  .pst-item:nth-child(n){ margin-top:0; }
+}
+@media (prefers-reduced-motion:reduce){
+  .pst-grid.pst-js .pst-item{ opacity:1; transform:none; transition:none; }
+  .pst-img img{ transition:none; }
 }
 
 /* PHOTOGRAPHY — full-screen lightbox with a FLIP zoom to/from the grid slot */
@@ -1176,6 +1464,123 @@ html.lb-lock body{ overflow:hidden; }
 }
 .form-submit:hover{
   opacity:0.85;
+}
+/* CONTACT — two columns under the title: a lead line, the email with a copy
+   button, social links as rows and three short facts on the left; the form
+   in its own outlined panel on the right. */
+.ct-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+  gap:clamp(40px,7vw,120px);
+  align-items:start;
+  border-top:1px solid var(--line);
+  padding-top:clamp(36px,5vh,54px);
+}
+.ct-lead{
+  max-width:620px;
+  margin-bottom:clamp(36px,5vh,56px);
+  font:400 clamp(22px,2.2vw,34px)/1.25 Arial, Helvetica, sans-serif;
+  letter-spacing:-.01em;
+  color:#f2f2ee;
+}
+.ct-block{
+  margin-bottom:clamp(28px,4vh,40px);
+}
+.ct-email{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px 18px;
+}
+.ct-email-link{
+  font:700 clamp(18px,1.8vw,28px)/1.2 Arial, Helvetica, sans-serif;
+  color:#fff;
+  word-break:break-all;
+  border-bottom:1px solid rgba(255,255,255,.35);
+  transition:border-color .3s ease;
+}
+.ct-email-link:hover{ border-bottom-color:#fff; }
+.ct-copy{
+  padding:8px 14px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;
+  background:transparent;
+  color:#ddd;
+  font:10px var(--mono);
+  letter-spacing:.14em;
+  cursor:pointer;
+  transition:background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+.ct-copy:hover,
+.ct-copy.is-done{
+  background:#fff;
+  border-color:#fff;
+  color:#050505;
+}
+.ct-social{
+  list-style:none;
+  margin:0;
+  padding:0;
+  max-width:560px;
+  border-top:1px solid var(--line);
+}
+.ct-social a{
+  display:grid;
+  grid-template-columns:120px minmax(0,1fr) auto;
+  align-items:center;
+  gap:16px;
+  padding:16px 0;
+  border-bottom:1px solid var(--line);
+  font:14px var(--mono);
+  color:#eaeaea;
+  transition:padding-left .35s cubic-bezier(.22,1,.36,1), color .3s ease;
+}
+.ct-handle{ color:var(--muted); }
+.ct-arrow{ transition:transform .35s cubic-bezier(.22,1,.36,1); }
+.ct-social a:hover{ padding-left:10px; color:#fff; }
+.ct-social a:hover .ct-arrow{ transform:translate(3px,-3px); }
+.ct-facts{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:24px;
+  padding-top:clamp(8px,2vh,20px);
+}
+.ct-facts .ct-block{ margin-bottom:0; }
+.ct-text{
+  font:12px/1.8 var(--mono);
+  color:#cfcfcf;
+}
+.ct-form-panel{
+  padding:clamp(24px,2.6vw,40px);
+  border:1px solid var(--line);
+  border-radius:6px;
+  background:rgba(255,255,255,.02);
+}
+.ct-form-panel .contact-form{
+  max-width:none;
+  margin-top:8px;
+}
+.ct-form-panel .form-textarea{
+  min-height:150px;
+  margin-top:0;
+}
+.form-select{
+  appearance:none;
+  -webkit-appearance:none;
+  cursor:pointer;
+  background-image:linear-gradient(45deg, transparent 50%, #888 50%), linear-gradient(135deg, #888 50%, transparent 50%);
+  background-position:calc(100% - 12px) 55%, calc(100% - 7px) 55%;
+  background-size:5px 5px, 5px 5px;
+  background-repeat:no-repeat;
+}
+.form-select option{ background:#111; color:#fff; }
+@media(max-width:1000px){
+  .ct-grid{ grid-template-columns:minmax(0,1fr); }
+  .ct-form-panel{ max-width:640px; }
+}
+@media(max-width:560px){
+  .ct-facts{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ct-social a{ grid-template-columns:96px minmax(0,1fr) auto; font-size:13px; }
 }
 @media(max-width: 600px) {
   .form-row{
@@ -1999,216 +2404,6 @@ body.home-video-body::-webkit-scrollbar{
 /* On upright screens script.js makes each slide a band exactly as tall as the
    clip's 16:9 picture across the full width, so cover shows every frame whole
    (bar the pixel of overlap between bands) with the clips touching. */
-/* HOME - detail view. Click a clip and it opens the way a work page would:
-   the clip settles into a band across the top (script.js moves the clip
-   itself), the rest of the reel fades away, the title comes up in the band's
-   corner - see-through, the footage showing in the letters - and the details
-   rise below on black. */
-.home-video-body.reel-clickable{ cursor:pointer; }
-.home-detail{
-  --hd-band:45vh;
-  --hd-gutter:clamp(14px,1.05vw,20px);
-  position:fixed;
-  inset:0;
-  z-index:60;
-  pointer-events:none;
-  visibility:hidden;
-  transition:visibility 0s linear .75s;
-}
-.home-detail.is-on{
-  visibility:visible;
-  transition:visibility 0s;
-}
-.hd-shade,
-.hd-hero{
-  position:absolute;
-  left:0;
-  right:0;
-  top:0;
-  height:var(--hd-band);
-}
-.hd-shade{
-  background:linear-gradient(to bottom, rgba(0,0,0,.2), rgba(0,0,0,0) 36%, rgba(0,0,0,.42));
-  opacity:0;
-  transition:opacity .4s ease;
-}
-.home-detail.is-on .hd-shade{
-  opacity:1;
-  transition:opacity .6s ease .35s;
-}
-.hd-hero{
-  padding:0;
-  border:0;
-  background:transparent;
-  cursor:pointer;
-}
-.home-detail.is-on .hd-hero,
-.home-detail.is-on .hd-sheet{
-  pointer-events:auto;
-}
-.hd-title-mask{
-  position:absolute;
-  left:var(--hd-gutter);
-  right:var(--hd-gutter);
-  bottom:calc(100% - var(--hd-band) + clamp(12px,2.4vh,26px));
-  overflow:hidden;
-  padding-top:.06em;
-  pointer-events:none;
-}
-/* See-through title: the letters are filled with a white that thins towards
-   their feet, so the clip shows through them more and more on the way down. */
-.hd-title{
-  margin:0;
-  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
-  font-weight:900;
-  font-size:clamp(38px,5.4vw,104px);
-  line-height:.94;
-  letter-spacing:-.01em;
-  text-transform:uppercase;
-  overflow-wrap:anywhere;
-  background:linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.8) 48%, rgba(255,255,255,.48) 100%);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-  -webkit-text-fill-color:transparent;
-  transform:translateY(106%);
-  transition:transform .4s cubic-bezier(.4,0,.2,1);
-}
-.home-detail.is-on .hd-title{
-  transform:none;
-  transition:transform .95s cubic-bezier(.16,.84,.24,1) .46s;
-}
-.hd-sheet{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  top:var(--hd-band);
-  display:flex;
-  flex-direction:column;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  background:#000;
-  color:#fff;
-  cursor:default;
-  opacity:0;
-  transform:translateY(40px);
-  transition:opacity .3s ease, transform .4s cubic-bezier(.4,0,.2,1);
-}
-.home-detail.is-on .hd-sheet{
-  opacity:1;
-  transform:none;
-  transition:opacity .5s ease .3s, transform .85s cubic-bezier(.16,.84,.24,1) .3s;
-}
-.hd-body{
-  flex:1 0 auto;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  column-gap:clamp(20px,2vw,40px);
-  padding:clamp(26px,5vh,48px) var(--hd-gutter) 40px;
-}
-.hd-left{
-  display:grid;
-  grid-template-columns:118px minmax(0,1fr);
-  align-items:start;
-}
-.hd-back{
-  justify-self:start;
-  padding:0;
-  border:0;
-  background:none;
-  color:#fff;
-  font:700 13px/1.35 Arial, Helvetica, sans-serif;
-  cursor:pointer;
-}
-.hd-back:hover,
-.hd-back:focus-visible{
-  text-decoration:underline;
-  text-underline-offset:3px;
-}
-.hd-rows{
-  display:grid;
-  row-gap:14px;
-  margin:0;
-}
-.hd-row{
-  display:grid;
-  grid-template-columns:236px minmax(0,1fr);
-}
-.hd-row[hidden],
-.hd-desc[hidden]{
-  display:none;
-}
-.hd-row dt,
-.hd-row dd{
-  margin:0;
-  font:700 13px/1.35 Arial, Helvetica, sans-serif;
-}
-.hd-row dt{ color:#8c8c8c; }
-.hd-row dd{ color:#fff; white-space:pre-line; }
-.hd-desc{
-  margin:0;
-  font:700 clamp(20px,1.72vw,34px)/1.06 Arial, Helvetica, sans-serif;
-  letter-spacing:-.005em;
-  color:#dcdcdc;
-}
-.hd-foot{
-  display:flex;
-  justify-content:space-between;
-  padding:0 var(--hd-gutter) 16px;
-  font:700 13px/1 Arial, Helvetica, sans-serif;
-  color:#fff;
-}
-.hd-clock span{ color:#8c8c8c; }
-/* the details come in after the sheet, one after another, and go at once */
-.hd-back,
-.hd-row,
-.hd-desc,
-.hd-foot{
-  opacity:0;
-  transform:translateY(12px);
-  transition:opacity .2s ease, transform .25s ease;
-}
-.home-detail.is-on .hd-back,
-.home-detail.is-on .hd-row,
-.home-detail.is-on .hd-desc,
-.home-detail.is-on .hd-foot{
-  opacity:1;
-  transform:none;
-  transition:opacity .55s ease, transform .75s cubic-bezier(.16,.84,.24,1);
-}
-.home-detail.is-on .hd-back{ transition-delay:.5s; }
-.home-detail.is-on .hd-row:nth-child(1){ transition-delay:.55s; }
-.home-detail.is-on .hd-row:nth-child(2){ transition-delay:.6s; }
-.home-detail.is-on .hd-row:nth-child(3){ transition-delay:.65s; }
-.home-detail.is-on .hd-row:nth-child(4){ transition-delay:.7s; }
-.home-detail.is-on .hd-row:nth-child(5){ transition-delay:.75s; }
-.home-detail.is-on .hd-desc{ transition-delay:.62s; }
-.home-detail.is-on .hd-foot{ transition-delay:.85s; }
-@media(max-width:800px){
-  .hd-body{
-    grid-template-columns:minmax(0,1fr);
-    row-gap:30px;
-  }
-  .hd-left{
-    grid-template-columns:minmax(0,1fr);
-    row-gap:22px;
-  }
-  .hd-row{
-    grid-template-columns:110px minmax(0,1fr);
-  }
-  .hd-desc{
-    font-size:clamp(18px,5vw,24px);
-    line-height:1.12;
-  }
-}
-@media (prefers-reduced-motion:reduce){
-  .home-detail *,
-  .home-detail.is-on *{
-    transition-duration:.01ms !important;
-    transition-delay:0s !important;
-  }
-}
 .home-reel-spacer{
   width:1px;
   height:16000vh; /* JS overrides this on load; kept as a fallback */

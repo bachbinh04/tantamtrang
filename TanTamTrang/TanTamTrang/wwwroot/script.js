@@ -790,7 +790,6 @@ function refetchClip(v, base, st) {
   let ticking = false;
   let carry = 0;               // sub-pixel glide the scroll position can't hold
   let leaving = false;         // a transition to another page has covered the screen
-  let detailFor = -1;          // the slide open in the detail view, or -1
 
   /* Landscape: one clip per window, as ever. Upright screens: each clip is a
      band exactly as tall as its 16:9 picture across the full width, and the
@@ -899,7 +898,7 @@ function refetchClip(v, base, st) {
 
   function render() {
     ticking = false;
-    if (leaving || detailFor >= 0) return;   // covered, or held still by the detail view
+    if (leaving) return;   // covered by a transition to another page
     for (let i = 0; i < N; i++) {
       const y = slideY(i);
       // one pixel up: that pixel lies over the bottom row of the clip above,
@@ -998,7 +997,7 @@ function refetchClip(v, base, st) {
   function glideTick(t) {
     const dt = lastT ? Math.min(t - lastT, 50) : 16;
     lastT = t;
-    const want = armed && glide && !document.hidden && !leaving && detailFor < 0;
+    const want = armed && glide && !document.hidden && !leaving;
     if (!want) { carry = 0; window.requestAnimationFrame(glideTick); return; }
 
     if (speed < 1) speed = Math.min(1, speed + dt / RAMP_MS);
@@ -1024,10 +1023,7 @@ function refetchClip(v, base, st) {
   }
   window.requestAnimationFrame(glideTick);
 
-  function armGlide() {
-    armed = true;
-    document.body.classList.add('reel-clickable');   // the clips can be clicked for their info now
-  }
+  function armGlide() { armed = true; }
 
   /* Wait for the intro to report in, then hold. If there is no intro on the
      page at all (libraries blocked, a re-entry that skipped it) there is
@@ -1116,224 +1112,6 @@ function refetchClip(v, base, st) {
     if (leaving) return;
     slides.forEach(s => { if (s._want && s._video && !s._video.error) safePlay(s._video); });
   }, { passive: true }));
-
-  /* ---- detail view -------------------------------------------------------
-     Click or tap a clip and it opens the way a work page would. The clip
-     itself settles into a band across the top of the screen - its middle
-     cropped to the band in landscape, grown to fill it on an upright screen -
-     while the rest of the reel fades off either way; its title comes up in the
-     band's corner and its details rise below. The words are the clip's data-*
-     attributes in index.html (title, client, category, year, role, desc); a
-     line left empty is not shown, and the length is read from the clip. Back,
-     Esc or a click on the band plays it all in reverse, and the glide carries
-     on from exactly where it was: the page is held still while it is open.
-     The stage takes no pointer events - the page has to stay scrollable over
-     it - so a click is matched to a clip by where it landed. */
-  const detail = document.getElementById('homeDetail');
-  const hdTitle = document.getElementById('hdTitle');
-  const hdDesc = document.getElementById('hdDesc');
-  const hdNo = document.getElementById('hdNo');
-  const hdClock = document.getElementById('hdClock');
-  const hdBack = document.getElementById('hdBack');
-  const hdHero = document.getElementById('hdHero');
-  if (detail && hdTitle && hdDesc && hdNo && hdClock && hdBack && hdHero) {
-    const rows = [...detail.querySelectorAll('.hd-row')];
-    const EASE_IO = 'cubic-bezier(.7,0,.2,1)';
-    const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const upright = window.matchMedia('(orientation: portrait)');
-    const pad2 = (n) => String(n).padStart(2, '0');
-    const clipLength = (sec) => {
-      if (!isFinite(sec) || sec <= 0) return '';
-      const t = Math.round(sec);
-      return Math.floor(t / 60) + ':' + pad2(t % 60);
-    };
-    let busy = false;
-    let geo = null;
-    let anims = [];
-    let clockTimer = 0;
-
-    // the clip under a point; where two share the overlap pixel, the one
-    // later in the page is the one drawn on top
-    const slideAt = (y) => {
-      let hit = -1;
-      slides.forEach((sl, i) => {
-        const r = sl.getBoundingClientRect();
-        if (y >= r.top && y < r.bottom) hit = i;
-      });
-      return hit;
-    };
-
-    // The band across the top, and how clip i is fitted to it.
-    function geometry(i) {
-      const band = Math.round(Math.max(160, Math.min(vh * (upright.matches ? 0.38 : 0.45), vh - 220)));
-      const g = { y: slideY(i), band, k: 1, tY: 0, cT: 0, cB: 0 };
-      if (slideH >= band) {            // taller than the band: keep its middle
-        g.cT = Math.round((slideH - band) / 2);
-        g.cB = slideH + 1 - band - g.cT;
-        g.tY = -g.cT;
-      } else {                         // shorter: grow it, from the top, to fill it
-        g.k = band / slideH;
-      }
-      return g;
-    }
-    const atReel = (y) => ({ transform: 'translate3d(0,' + (y - 1).toFixed(1) + 'px,0) scale(1)', clipPath: 'inset(0px 0px 0px 0px)' });
-    const inBand = (g) => ({ transform: 'translate3d(0,' + g.tY + 'px,0) scale(' + g.k.toFixed(4) + ')', clipPath: 'inset(' + g.cT + 'px 0px ' + g.cB + 'px 0px)' });
-    const aside = (y, dir) => 'translate3d(0,' + (y - 1 + dir * Math.min(160, vh * 0.18)).toFixed(1) + 'px,0)';
-    const onScreen = (y) => y + slideH > 0 && y < vh;
-
-    function fill(i) {
-      const d = slides[i].dataset;
-      const v = slides[i]._video;
-      const len = clipLength(v && v.duration);
-      hdTitle.textContent = (d.title || '').trim();
-      const values = {
-        client: d.client,
-        category: d.category,
-        year: d.year,
-        role: (d.role || '').split(',').map(t => t.trim()).filter(Boolean).join('\n'),
-        length: len ? len + ' · Loop' : ''
-      };
-      rows.forEach((row) => {
-        const val = (values[row.dataset.field] || '').trim();
-        row.querySelector('dd').textContent = val;
-        row.hidden = !val;
-      });
-      const desc = (d.desc || '').trim();
-      hdDesc.textContent = desc;
-      hdDesc.hidden = !desc;
-      hdNo.textContent = 'N°' + pad2(i + 1) + ' / ' + pad2(N);
-    }
-
-    // the time where the reader is, as the sample page shows it
-    function tick() {
-      const now = new Date();
-      let time = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
-      let zone = '';
-      try {
-        const part = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(now).find(p => p.type === 'timeZoneName');
-        zone = part ? part.value : '';
-      } catch (e) {}
-      hdClock.textContent = time + ' ';
-      const z = document.createElement('span');
-      z.textContent = zone;
-      hdClock.appendChild(z);
-    }
-
-    function stopAnims() {
-      anims.forEach(a => { try { a.cancel(); } catch (e) {} });
-      anims = [];
-    }
-    function run(el, frames, opts) {
-      const a = el.animate(frames, Object.assign({ fill: 'both' }, opts, reduced ? { duration: 1, delay: 0 } : {}));
-      anims.push(a);
-      return a;
-    }
-
-    function openDetail(i) {
-      if (detailFor >= 0 || busy) return;
-      busy = true;
-      detailFor = i;
-      const sl = slides[i];
-      const v = sl._video;
-      fill(i);
-      if (v && !(v.duration > 0)) {
-        v.addEventListener('loadedmetadata', () => { if (detailFor === i) fill(i); }, { once: true });
-      }
-      geo = geometry(i);
-      detail.style.setProperty('--hd-band', geo.band + 'px');
-      document.documentElement.classList.add('lb-lock');
-
-      stopAnims();
-      sl.style.transformOrigin = '50% 0';
-      sl.style.zIndex = '2';
-      const moved = run(sl, [atReel(geo.y), inBand(geo)], { duration: 860, easing: EASE_IO });
-      slides.forEach((o, j) => {
-        if (j === i) return;
-        o._want = false;
-        if (o._video && !o._video.paused) o._video.pause();
-        const y = slideY(j);
-        if (!onScreen(y)) return;
-        run(o, [{ transform: aside(y, 0), opacity: 1 }, { transform: aside(y, y < geo.y ? -1 : 1), opacity: 0 }],
-            { duration: 560, easing: 'cubic-bezier(.4,0,.2,1)' });
-      });
-      sl._want = true;
-      safePlay(v);
-
-      detail.classList.add('is-on');
-      detail.setAttribute('aria-hidden', 'false');
-      tick();
-      clockTimer = setInterval(tick, 1000);
-      let ended = false;
-      const finish = () => { if (!ended) { ended = true; busy = false; } };
-      moved.finished.then(finish, finish);
-      setTimeout(finish, 1200);
-    }
-
-    function closeDetail() {
-      if (detailFor < 0 || busy) return;
-      busy = true;
-      const i = detailFor;
-      const sl = slides[i];
-      const from = geo;
-      const home = slideY(i);
-      detail.classList.remove('is-on');
-      detail.setAttribute('aria-hidden', 'true');
-      clearInterval(clockTimer);
-
-      stopAnims();
-      const moved = run(sl, [inBand(from), atReel(home)], { duration: 760, delay: 140, easing: EASE_IO });
-      slides.forEach((o, j) => {
-        if (j === i) return;
-        const y = slideY(j);
-        if (!onScreen(y)) return;
-        run(o, [{ transform: aside(y, y < home ? -1 : 1), opacity: 0 }, { transform: aside(y, 0), opacity: 1 }],
-            { duration: 620, delay: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      });
-
-      let ended = false;
-      const finish = () => {
-        if (ended) return;
-        ended = true;
-        stopAnims();
-        sl.style.transformOrigin = '';
-        sl.style.zIndex = '';
-        document.documentElement.classList.remove('lb-lock');
-        detailFor = -1;
-        geo = null;
-        busy = false;
-        slides.forEach(touch);
-        render();
-      };
-      Promise.all(anims.map(a => a.finished)).then(finish, finish);
-      setTimeout(finish, 1400);                    // safety net
-    }
-
-    document.addEventListener('click', (e) => {
-      if (!armed || leaving || detailFor >= 0) return;
-      if (e.target.closest && e.target.closest('a, button, .topbar, .home-detail')) return;
-      const i = slideAt(e.clientY);
-      if (i >= 0) openDetail(i);
-    });
-    hdBack.addEventListener('click', closeDetail);
-    hdHero.addEventListener('click', closeDetail);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && detailFor >= 0) closeDetail();
-    });
-    // Held still while open: on a phone a drag would otherwise scroll the page
-    // (and the reel under the band) - only the sheet of details may scroll.
-    document.addEventListener('touchmove', (e) => {
-      if (detailFor >= 0 && !(e.target.closest && e.target.closest('.hd-sheet'))) e.preventDefault();
-    }, { passive: false });
-    // a new window size: refit the band at once, without playing anything
-    window.addEventListener('resize', () => {
-      if (detailFor < 0 || busy) return;
-      geo = geometry(detailFor);
-      detail.style.setProperty('--hd-band', geo.band + 'px');
-      stopAnims();
-      run(slides[detailFor], [inBand(geo), inBand(geo)], { duration: 1 });
-      slides.forEach((o, j) => { if (j !== detailFor) run(o, [{ opacity: 0 }, { opacity: 0 }], { duration: 1 }); });
-    });
-  }
 })();
 
 
@@ -3635,6 +3413,143 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /* =========================================================
+   POSTER — STAIRCASE GRID
+   Each poster lifts in as it comes into view, the ones in a row a
+   beat apart so the step down reads as it arrives. Without script
+   (or an observer) they are simply there.
+   ========================================================= */
+(function () {
+  const grid = document.querySelector('.pst-grid');
+  if (!grid) return;
+  const items = [...grid.querySelectorAll('.pst-item')];
+  // how many columns the stylesheet asks for at this width (--cols)
+  const cols = () => Math.max(1, parseInt(getComputedStyle(grid).getPropertyValue('--cols'), 10) || 1);
+
+  // Deal the posters into real columns, left to right in reading order, so
+  // each one sits right under the one above it; redealt only when the
+  // column count changes.
+  let dealt = 0;
+  function deal() {
+    const n = cols();
+    if (n === dealt) return;
+    dealt = n;
+    const colEls = [];
+    for (let k = 0; k < n; k++) {
+      const el = document.createElement('div');
+      el.className = 'pst-col';
+      colEls.push(el);
+    }
+    items.forEach((it, i) => colEls[i % n].appendChild(it));
+    grid.querySelectorAll('.pst-col').forEach(el => el.remove());
+    colEls.forEach(el => grid.appendChild(el));
+    grid.classList.add('pst-cols');
+  }
+  deal();
+  window.addEventListener('resize', deal);
+
+  if (!('IntersectionObserver' in window)) return;
+  grid.classList.add('pst-js');
+  const io = new IntersectionObserver((entries) => {
+    const n = cols();
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const k = items.indexOf(e.target) % n;
+      e.target.style.transitionDelay = (k * 0.09).toFixed(2) + 's';
+      e.target.classList.add('is-in');
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+  items.forEach((it) => io.observe(it));
+  // the delay is only for the arrival; clear it so hover and resize feel direct
+  grid.addEventListener('transitionend', (e) => {
+    if (e.target.classList && e.target.classList.contains('pst-item')) e.target.style.transitionDelay = '';
+  });
+})();
+
+/* =========================================================
+   CONTACT — COPY EMAIL
+   The button next to the address puts it on the clipboard and says
+   so for a moment. Where the clipboard is not allowed it selects the
+   address instead, ready for Ctrl+C.
+   ========================================================= */
+(function () {
+  const btn = document.querySelector('.ct-copy[data-copy]');
+  if (!btn) return;
+  const label = btn.textContent;
+  let timer = null;
+  const done = (text) => {
+    btn.textContent = text;
+    btn.classList.add('is-done');
+    clearTimeout(timer);
+    timer = setTimeout(() => { btn.textContent = label; btn.classList.remove('is-done'); }, 1600);
+  };
+  const selectLink = () => {
+    const link = document.querySelector('.ct-email-link');
+    if (!link || !window.getSelection) return;
+    const r = document.createRange();
+    r.selectNodeContents(link);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  };
+  btn.addEventListener('click', () => {
+    const text = btn.getAttribute('data-copy');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => done('COPIED'), () => { selectLink(); done('SELECTED'); });
+    } else {
+      selectLink();
+      done('SELECTED');
+    }
+  });
+})();
+
+/* =========================================================
+   EXPERIENCE DESIGN — PROJECT MENU
+   Four buttons, one case study open at a time beneath them. The
+   address carries the open one (#monster-within), so a project can
+   be linked to and the back button steps between them.
+   ========================================================= */
+(function () {
+  const tabs = [...document.querySelectorAll('.ed-tab[data-ed]')];
+  if (!tabs.length) return;
+  const art = (key) => document.getElementById('ed-' + key);
+  const keys = tabs.map(t => t.getAttribute('data-ed')).filter(k => art(k));
+  let current = null;
+
+  function show(key, scroll) {
+    if (!keys.includes(key)) key = null;
+    if (key === current) return;
+    current = key;
+    tabs.forEach(t => {
+      const on = t.getAttribute('data-ed') === key;
+      t.classList.toggle('is-on', on);
+      t.setAttribute('aria-expanded', on ? 'true' : 'false');
+      const go = t.querySelector('.ed-tab-go');
+      if (go) go.textContent = on ? 'OPEN' : 'OPEN ↓';
+    });
+    keys.forEach(k => {
+      const a = art(k);
+      a.hidden = k !== key;
+      a.classList.remove('is-in');
+    });
+    if (!key) return;
+    const a = art(key);
+    void a.offsetWidth;                       // restart the arrival
+    a.classList.add('is-in');
+    if (scroll) a.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const fromHash = () => decodeURIComponent(location.hash.replace(/^#/, ''));
+  tabs.forEach(t => t.addEventListener('click', () => {
+    const key = t.getAttribute('data-ed');
+    if (fromHash() !== key) history.pushState(null, '', '#' + key);
+    show(key, true);
+  }));
+  window.addEventListener('popstate', () => show(fromHash(), false));
+  show(fromHash(), !!fromHash());
+})();
+
+/* =========================================================
    PHOTOGRAPHY — FLIP LIGHTBOX
    Click a photo: it grows from its grid slot to full screen
    (translate + uniform scale, inverted then played). Close with
@@ -3643,7 +3558,8 @@ document.addEventListener('DOMContentLoaded', () => {
    slot stays put for the zoom-out.
    ========================================================= */
 (function () {
-  const grid = document.querySelector('.photo-grid');
+  // the Poster page's staircase grid shares this lightbox
+  const grid = document.querySelector('.photo-grid, .pst-grid');
   const lb = document.getElementById('photoLb');
   if (!grid || !lb) return;
   const frame = lb.querySelector('.photo-lb-frame');
@@ -3717,7 +3633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     busy = true;
     openFig = fig;
 
-    lbImg.src = thumb.currentSrc || thumb.src;
+    lbImg.src = thumb.getAttribute('data-full') || thumb.currentSrc || thumb.src;
     stopAnims();
     frame.style.transition = 'none';
     frame.style.transform = 'none';
