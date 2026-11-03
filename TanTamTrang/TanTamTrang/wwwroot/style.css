@@ -248,6 +248,29 @@ img{max-width:100%;display:block}
   .ed-article.is-in{ animation:none; }
   .ed-tab{ transition:none; }
 }
+/* TYPOGRAPHY — the sets of pages under the two books. Each opens with its
+   own heading, then runs as a column of pages (the .ed-deck below). */
+.typo-doc{
+  padding-top:clamp(40px,8vh,96px);
+}
+.doc-head{
+  max-width:1240px;
+  margin:0 auto clamp(24px,4vh,40px);
+  padding-top:clamp(20px,3vh,32px);
+  border-top:1px solid var(--line);
+}
+.doc-title{
+  margin-top:14px;
+  font-size:clamp(28px,4vw,58px);
+  line-height:.95;
+  letter-spacing:-.05em;
+}
+.doc-intro{
+  margin-top:18px;
+  max-width:560px;
+  font:12px/1.8 var(--mono);
+  color:var(--muted);
+}
 .ed-deck{
   max-width:1240px;
   margin:0 auto;
@@ -700,6 +723,13 @@ img{max-width:100%;display:block}
 .pst-page{
   padding:118px clamp(18px,3vw,48px) 0;
 }
+/* the page's own opening, centred over the grid */
+.pst-page .poster-hero{
+  margin-bottom:clamp(40px,8vh,90px);
+}
+.pst-page .poster-intro{
+  max-width:620px;
+}
 .pst-head{
   display:flex;
   justify-content:space-between;
@@ -756,19 +786,34 @@ img{max-width:100%;display:block}
 .pst-item figcaption{
   padding-top:14px;
 }
-.pst-item h2{
-  font:700 clamp(13px,1vw,16px)/1.2 Arial, Helvetica, sans-serif;
-  letter-spacing:0;
+.pst-name{
+  font:900 clamp(14px,1.1vw,18px)/1.15 'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
+  letter-spacing:-.01em;
   color:#f2f2ee;
 }
-.pst-item p{
-  margin-top:8px;
-  font:11px/1.6 var(--mono);
+/* what the poster is, then the thinking behind it: each small heading in
+   white above its paragraph. */
+.pst-desc{
+  margin-top:12px;
+}
+.pst-desc h3{
+  font:700 11px/1.45 Arial, Helvetica, sans-serif;
+  letter-spacing:.01em;
+  color:#e6e6e2;
+}
+.pst-desc h3 + p{
+  margin-top:5px;
+}
+.pst-desc p{
+  font:11px/1.65 var(--mono);
   color:#8a8a8a;
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
+}
+.pst-desc p + h3{
+  margin-top:12px;
+}
+.pst-desc em{
+  font-style:italic;
+  color:#bdbdbd;
 }
 .pst-meta{
   display:flex;
@@ -1029,6 +1074,37 @@ html.lb-lock body{ overflow:hidden; }
   backface-visibility:hidden;
   opacity:0;
   background:linear-gradient(102deg, rgba(255,255,255,.14), rgba(255,255,255,0) 44%, rgba(0,0,0,.22));
+}
+/* One page at a time. Same book, half of it: the sheet is the whole frame,
+   hinged on its left edge, and it sweeps away to the left as the page under
+   it comes up. --ratio is the page's own width/height, set per book in the
+   markup, so landscape pages are shown whole. */
+.book-single{
+  --pw:min(92vw,980px);
+  --ph:calc(var(--pw) / var(--ratio, 1.4142));
+  width:var(--pw);
+  height:var(--ph);
+}
+.book-page-single{
+  left:0;
+  width:100%;
+  border-radius:3px;
+}
+.book-single .leaf{
+  left:0;
+  width:100%;
+  border-radius:3px;
+  will-change:transform, opacity;
+}
+.book-single .leaf-front{
+  border-radius:3px;
+}
+/* no gutter on a single sheet - there is no spine for a shadow to fall into */
+.book-single .leaf-face::after{ background:none; }
+.book-single .book-page img,
+.book-single .leaf-face img{ object-fit:contain; background:#0c0c0c; }
+@media(max-width:820px){
+  .book-single{ --pw:92vw; margin-top:5vh; }
 }
 .book-caption{
   font:11px var(--mono);
@@ -2306,13 +2382,13 @@ html.wc-split-done .page-enter-curtain::before{
   border-bottom:1px solid rgba(255,255,255,.05);
 }
 
-/* The header - the name and the menu - is set in Arial Black. Windows and
-   macOS both have it; where it is missing (most phones) the heaviest Arial or
-   Helvetica on the device stands in, which is why the weight is spelled out. */
+/* The header - the name and the menu - is set in bold Arial: a step lighter
+   than the Arial Black it used to be, and the same on every device, since
+   phones have bold Arial or Helvetica even where Arial Black is missing. */
 .brand-static{
-  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
+  font-family:Arial, Helvetica, sans-serif;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 700;
   font-size: 20px;
   letter-spacing: 0.05em;
   color:#f2f2ee;
@@ -2321,17 +2397,21 @@ html.wc-split-done .page-enter-curtain::before{
   pointer-events:none;
 }
 
+/* The menu takes the whole bar after the name and spreads its items evenly
+   across it: the first one a clear step away from the name, the last one
+   flush with the right edge. */
 .topnav{
+  flex:1 1 auto;
   display:flex;
   align-items:center;
-  gap:48px;
-  justify-content:flex-end;
-  font-family:'Arial Black', 'Arial Bold', Gadget, Arial, Helvetica, sans-serif;
-  font-weight:900;
+  gap:24px;
+  justify-content:space-between;
+  font-family:Arial, Helvetica, sans-serif;
+  font-weight:700;
   font-size: 16px;
   letter-spacing:.1em;
   text-transform:uppercase;
-  margin-left:auto;
+  margin-left:clamp(28px,12vw,240px);
 }
 
 .topnav a{
@@ -2456,8 +2536,86 @@ body.home-video-body::-webkit-scrollbar{
   letter-spacing:.14em;
   text-align:center;
   z-index:2;
-  animation:shakeFlash 3s infinite;
+  position:relative;
+  color:#c4c4c0;
+  /* Like the reference clip: the word comes up out of a soft blur, then never
+     settles - a broken tape signal held for as long as the intro runs. The
+     word itself shakes in hard steps and splits red / blue; the two copies
+     laid over it (below) are the cut bands and the colour bars. */
+  animation:
+    titleIn .55s ease-out both,
+    titleShake .72s steps(1, end) .45s infinite;
 }
+.loading-title::before,
+.loading-title::after{
+  content:attr(data-text);
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  mix-blend-mode:screen;
+  clip-path:inset(0 0 100% 0);
+  /* fattened, so a band reads as a solid streak of colour, not a thin line */
+  -webkit-text-stroke:2px currentColor;
+  text-shadow:0 0 6px currentColor;
+}
+/* offset cuts: bands of the word knocked sideways, tinted as they go */
+.loading-title::before{
+  animation:titleCutA .9s steps(1, end) .4s infinite;
+}
+/* colour bars: a thin band low across the letters in a saturated colour,
+   jumping height and hue every few frames - the green / magenta / blue
+   streaks of the clip */
+.loading-title::after{
+  animation:titleBars 1.13s steps(1, end) .4s infinite;
+}
+@keyframes titleIn{
+  0%   { opacity:0;  filter:blur(14px) brightness(.5); }
+  60%  { opacity:.7; filter:blur(4px) brightness(.8); }
+  100% { opacity:1;  filter:none; }
+}
+@keyframes titleShake{
+  0%   { transform:translate(0,0);      text-shadow:-2px 0 rgba(255,40,90,.55), 2px 0 rgba(60,120,255,.55); color:#d8d8d4; }
+  11%  { transform:translate(-3px,0);   text-shadow:-4px 0 rgba(255,40,90,.6), 3px 0 rgba(60,255,140,.5);  color:#a9a9a6; }
+  22%  { transform:translate(2px,1px);  text-shadow:2px 0 rgba(200,60,255,.6), -2px 0 rgba(60,255,140,.45); color:#e6e6e2; }
+  33%  { transform:translate(0,0);      text-shadow:-1px 0 rgba(255,40,90,.4), 1px 0 rgba(60,120,255,.4);  color:#8f8f8c; }
+  44%  { transform:translate(5px,0);    text-shadow:-6px 0 rgba(60,255,140,.55), 4px 0 rgba(255,40,90,.5); color:#cfcfcb; }
+  55%  { transform:translate(-1px,-1px);text-shadow:3px 0 rgba(60,120,255,.6), -3px 0 rgba(255,220,60,.4); color:#f2f2ee; }
+  66%  { transform:translate(0,0);      text-shadow:-2px 0 rgba(255,40,90,.55), 2px 0 rgba(60,120,255,.55); color:#9c9c99; }
+  77%  { transform:translate(-4px,0);   text-shadow:5px 0 rgba(200,60,255,.55), -2px 0 rgba(60,255,140,.5); color:#dcdcd8; }
+  88%  { transform:translate(2px,0);    text-shadow:-3px 0 rgba(255,40,90,.5), 3px 0 rgba(60,120,255,.5);  color:#b8b8b4; }
+  100% { transform:translate(0,0); }
+}
+@keyframes titleCutA{
+  0%   { clip-path:inset(2% 0 64% 0);  transform:translateX(-18px); color:#ff3c6e; }
+  12%  { clip-path:inset(34% 0 36% 0); transform:translateX(25px);  color:#3cffa0; }
+  24%  { clip-path:inset(56% 0 12% 0); transform:translateX(-11px);  color:#c83cff; }
+  36%  { clip-path:inset(0 0 100% 0);  transform:none; }
+  44%  { clip-path:inset(16% 0 52% 0); transform:translateX(16px);   color:#3c8cff; }
+  56%  { clip-path:inset(64% 0 0% 0);  transform:translateX(-29px); color:#ffe23c; }
+  68%  { clip-path:inset(24% 0 44% 0); transform:translateX(9px);   color:#ff3c6e; }
+  80%  { clip-path:inset(0 0 100% 0);  transform:none; }
+  88%  { clip-path:inset(44% 0 24% 0); transform:translateX(-22px); color:#3cffa0; }
+  100% { clip-path:inset(2% 0 64% 0);  transform:translateX(-18px); color:#ff3c6e; }
+}
+@keyframes titleBars{
+  0%   { clip-path:inset(72% 0 2% 0);  transform:translateX(-7px); color:#3cff6a; }
+  10%  { clip-path:inset(78% 0 0% 0);  transform:translateX(11px);  color:#d23cff; }
+  20%  { clip-path:inset(64% 0 8% 0); transform:translateX(-4px); color:#3cff6a; }
+  30%  { clip-path:inset(50% 0 24% 0); transform:translateX(14px);  color:#3c6aff; }
+  40%  { clip-path:inset(74% 0 0% 0);  transform:translateX(-13px); color:#ffe23c; }
+  50%  { clip-path:inset(0 0 100% 0);  transform:none; }
+  58%  { clip-path:inset(68% 0 4% 0); transform:translateX(5px);  color:#3cff6a; }
+  68%  { clip-path:inset(12% 0 60% 0); transform:translateX(-16px); color:#ff3c3c; }
+  78%  { clip-path:inset(76% 0 0% 0);  transform:translateX(9px);  color:#d23cff; }
+  90%  { clip-path:inset(60% 0 14% 0); transform:translateX(-5px); color:#3cff6a; }
+  100% { clip-path:inset(72% 0 2% 0);  transform:translateX(-7px); color:#3cff6a; }
+}
+@media (prefers-reduced-motion:reduce){
+  .loading-title{ animation:titleIn .55s ease-out both; }
+  .loading-title::before,
+  .loading-title::after{ animation:none; }
+}
+
 @keyframes shakeFlash{
   0%   { transform:translate(0,0);      opacity:1;   }
   2%   { transform:translate(-4px,2px); opacity:.3;  }
@@ -2512,6 +2670,7 @@ body.home-video-body::-webkit-scrollbar{
   .topnav{
     gap:16px;
     font-size:10px;
+    margin-left:28px;
   }
 }
 
@@ -2531,6 +2690,18 @@ body.home-video-body::-webkit-scrollbar{
     gap:10px;
     font-size:9px;
     letter-spacing:.05em;
+    margin-left:16px;
+  }
+}
+/* the smallest phones: five menu items now, so a touch tighter again */
+@media(max-width:360px){
+  .topbar{ padding:0 12px; }
+  .brand-static{ font-size:10px; }
+  .topnav{
+    gap:8px;
+    font-size:8px;
+    letter-spacing:.03em;
+    margin-left:10px;
   }
 }
 
@@ -2996,3 +3167,619 @@ body.home-video-body::-webkit-scrollbar{
   /* The surface still reflects, it just stops moving - see reflectSync(). */
   .reel-reflect{ filter:none; }
 }
+
+/* ==========================================
+   ABOUT — editorial long page
+   Full-width photographs darkened under big serif headlines, alternating
+   with plain bands: cover and title; introduction with a portrait; two
+   statements over photographs; education on a light band; the projects two
+   to a row, each behind a round mark; the tools. Instrument Serif carries
+   the headlines, mostly in italic; --ab-accent is the one highlight colour.
+   ========================================== */
+.ab-page{
+  --ab-accent:#f2f2ee;
+  --ab-serif:'Instrument Serif', 'Times New Roman', Georgia, serif;
+  --ab-pad:clamp(20px,5vw,80px);
+  background:#050505;
+  color:#f2f2ee;
+}
+.ab-wrap{
+  max-width:1440px;
+  margin:0 auto;
+}
+.ab-cols{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:clamp(28px,5vw,80px);
+  align-items:center;
+}
+.ab-cols-top{ align-items:start; }
+.ab-col{ min-width:0; margin:0; }
+.ab-page em{ font-style:italic; }
+
+.ab-display{
+  font:400 clamp(44px,7.4vw,124px)/.92 var(--ab-serif);
+  letter-spacing:-.01em;
+  margin:0;
+}
+.ab-h2{
+  font:400 clamp(32px,4.2vw,64px)/1 var(--ab-serif);
+  margin:0;
+}
+.ab-h3{
+  font:400 clamp(22px,2vw,30px)/1.15 var(--ab-serif);
+  margin:0;
+}
+.ab-accent{ color:var(--ab-accent); }
+
+/* a photograph across the whole width, darkened by --ab-dim */
+.ab-cover{
+  position:relative;
+  isolation:isolate;
+  padding:clamp(80px,14vh,170px) var(--ab-pad);
+  overflow:hidden;
+}
+.ab-cover::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-2;
+  background:var(--ab-img) center / cover no-repeat;
+  background-position:var(--ab-pos, 50% 50%);
+}
+.ab-cover::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  background:rgba(0,0,0,var(--ab-dim, .5));
+}
+
+.ab-hero{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  text-align:center;
+}
+.ab-hero .ab-display{
+  font-size:clamp(46px,8.6vw,150px);
+  max-width:14ch;
+  margin:0 auto;
+  color:var(--ab-accent);
+}
+.ab-hero-name{
+  margin-top:clamp(18px,3vh,30px);
+  font:400 clamp(18px,1.7vw,26px)/1.3 var(--ab-serif);
+  letter-spacing:.06em;
+}
+
+.ab-intro{
+  padding:clamp(70px,12vh,140px) var(--ab-pad) clamp(30px,5vh,50px);
+}
+.ab-kicker{
+  font:200 clamp(20px,1.8vw,26px)/1.2 Arial, Helvetica, sans-serif;
+  color:#cfcfcb;
+  margin:0 0 10px;
+}
+.ab-name{
+  font:400 clamp(48px,6vw,96px)/.95 var(--ab-serif);
+  margin:0;
+}
+.ab-lead{
+  margin-top:clamp(18px,3vh,28px);
+  max-width:520px;
+  font:300 clamp(17px,1.4vw,22px)/1.5 Arial, Helvetica, sans-serif;
+  color:#e2e2de;
+}
+.ab-portrait{
+  justify-self:center;
+  width:min(100%,460px);
+}
+.ab-portrait img{
+  width:100%;
+  height:auto;
+  border-radius:15px;
+  display:block;
+}
+.ab-scroll{
+  margin-top:clamp(40px,7vh,70px);
+  text-align:center;
+  font:11px var(--mono);
+  letter-spacing:.18em;
+  color:#8a8a86;
+}
+
+/* the CV buttons, under the introduction */
+.ab-cv.about-cv{
+  justify-content:flex-start;
+  margin-top:clamp(24px,4vh,36px);
+}
+.ab-cv .cv-btn{
+  display:inline-flex;
+  align-items:center;
+  padding:13px 22px;
+  border:1px solid #f2f2ee;
+  border-radius:999px;
+  font:11px var(--mono);
+  letter-spacing:.12em;
+  transition:background-color .25s ease, color .25s ease;
+}
+.ab-cv .cv-download{ background:#f2f2ee; color:#050505; }
+.ab-cv .cv-view{ color:#f2f2ee; }
+.ab-cv .cv-view:hover,
+.ab-cv .cv-view:focus-visible{ background:#f2f2ee; color:#050505; }
+.ab-cv .cv-download:hover,
+.ab-cv .cv-download:focus-visible{ background:transparent; color:#f2f2ee; }
+
+.ab-statement{
+  min-height:clamp(520px,88vh,960px);
+  display:grid;
+  align-content:center;
+}
+.ab-statement > .ab-wrap{ width:100%; }
+.ab-statement .ab-display{ font-size:clamp(46px,6.6vw,110px); }
+.ab-statement .ab-h2 + .ab-display,
+.ab-statement .ab-display + .ab-h2{ margin-top:10px; }
+.ab-body p{
+  font:300 clamp(16px,1.25vw,20px)/1.65 Arial, Helvetica, sans-serif;
+  color:#ecece8;
+  max-width:560px;
+}
+.ab-body p + p{ margin-top:1.1em; }
+
+/* light band */
+.ab-light{
+  background:#ececea;
+  color:#141414;
+  padding:clamp(56px,9vh,100px) var(--ab-pad);
+}
+.ab-edu{
+  display:grid;
+  gap:clamp(22px,3vh,32px);
+}
+.ab-edu p{
+  margin-top:6px;
+  font:300 clamp(15px,1.15vw,18px)/1.6 Arial, Helvetica, sans-serif;
+  color:#3a3a3a;
+}
+
+.ab-projects{
+  padding:clamp(70px,11vh,130px) var(--ab-pad);
+}
+.ab-section-title{ margin-bottom:clamp(36px,6vh,64px); }
+.ab-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(40px,6vh,70px) clamp(28px,5vw,80px);
+}
+.ab-proj{
+  display:grid;
+  grid-template-columns:clamp(110px,14vw,200px) minmax(0,1fr);
+  gap:clamp(20px,2.6vw,40px);
+  align-items:center;
+}
+.ab-disc{
+  aspect-ratio:1;
+  border-radius:50%;
+  border:1px solid rgba(242,242,238,.4);
+  display:grid;
+  place-items:center;
+  background:radial-gradient(circle at 30% 25%, #1d1d1d, #070707 70%);
+}
+.ab-disc span{
+  font:italic 400 clamp(40px,5vw,76px)/1 var(--ab-serif);
+  color:var(--ab-accent);
+}
+.ab-proj-cat{
+  font:10px var(--mono);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#8a8a86;
+}
+.ab-proj h4{
+  margin:8px 0 8px;
+  font:400 clamp(22px,1.9vw,30px)/1.1 var(--ab-serif);
+}
+.ab-proj-text > p:last-child{
+  font:300 clamp(14px,1.05vw,16px)/1.6 Arial, Helvetica, sans-serif;
+  color:#c9c9c5;
+}
+
+.ab-skills{
+  padding:clamp(56px,9vh,100px) var(--ab-pad);
+  border-top:1px solid var(--line);
+}
+.ab-tags{
+  list-style:none;
+  padding:0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.ab-tags li{
+  padding:10px 18px;
+  border:1px solid rgba(242,242,238,.35);
+  border-radius:999px;
+  font:400 clamp(18px,1.5vw,24px)/1 var(--ab-serif);
+  font-style:italic;
+}
+
+@media(max-width:900px){
+  .ab-cols{ grid-template-columns:minmax(0,1fr); }
+  .ab-grid{ grid-template-columns:minmax(0,1fr); }
+  .ab-portrait{ width:min(100%,380px); }
+}
+@media(max-width:520px){
+  .ab-proj{ grid-template-columns:96px minmax(0,1fr); }
+}
+
+/* ==========================================
+   MY STORY — a studio "about" page. A full-screen picture that cuts
+   between scenes; on a light page below it, statements set big and bold
+   with their first line indented, labels in a narrow left gutter, small
+   text beside a large picture that holds while the rows pass, numbered
+   rows of short lists, then selected works two to a row. The place and
+   the time in Melbourne sit fixed in the bottom corners.
+   ========================================== */
+.st-page{
+  --st-bg:#f0f0ee;
+  --st-ink:#0d0d0d;
+  --st-gut:clamp(16px,1.3vw,24px);
+  --st-col:19.5%;
+  background:var(--st-bg);
+  color:var(--st-ink);
+  font-family:Arial, Helvetica, sans-serif;
+}
+.st-page a{ color:inherit; }
+
+.st-hero{
+  position:relative;
+  height:92vh;
+  min-height:420px;
+  overflow:hidden;
+  background:#000;
+}
+.st-slide{
+  position:absolute;
+  inset:0;
+  background:var(--img) center / cover no-repeat;
+  opacity:0;
+}
+.st-slide.is-on{ opacity:1; }
+.st-card{
+  background:#e3110f;
+  color:#0b0b0b;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:clamp(90px,15vh,140px) 0 clamp(14px,3vh,34px);
+  overflow:hidden;
+}
+/* the year and the title across the top, the name filling the width below,
+   drawn tall and narrow like a film title */
+.st-card-top{
+  display:flex;
+  justify-content:space-between;
+  padding:0 clamp(20px,6vw,90px);
+  font:italic 900 clamp(34px,5.6vw,96px)/1 Arial, Helvetica, sans-serif;
+  letter-spacing:-.04em;
+}
+.st-card-top i{ font-weight:400; }
+.st-card-word{
+  display:block;
+  white-space:nowrap;
+  font:400 12.4vw/.82 Arial, Helvetica, sans-serif;
+  letter-spacing:-.06em;
+  transform:scaleY(1.6);
+  transform-origin:bottom left;
+  padding-left:1vw;
+}
+.st-card-word b{ font-family:'Arial Black', Arial, sans-serif; font-weight:900; font-style:italic; }
+.st-tag{
+  position:absolute;
+  z-index:2;
+  font:700 12px/1.25 Arial, Helvetica, sans-serif;
+  color:#fff !important;
+  text-shadow:0 1px 6px rgba(0,0,0,.5);
+}
+.st-tag small{
+  display:block;
+  font:400 10px var(--mono);
+  opacity:.75;
+}
+.st-tag:hover{ text-decoration:underline; }
+
+.st-sec,
+.st-works{
+  position:relative;
+  padding:clamp(28px,5vh,56px) var(--st-gut) 0;
+}
+.st-side,
+.st-label{
+  font:400 12px/1.2 Arial, Helvetica, sans-serif;
+  color:#3a3a3a;
+}
+.st-side{
+  position:absolute;
+  left:var(--st-gut);
+  top:clamp(28px,5vh,56px);
+}
+.st-big{
+  margin:0 0 0 var(--st-col);
+  font:700 clamp(24px,2.55vw,46px)/1.12 Arial, Helvetica, sans-serif;
+  letter-spacing:-.012em;
+}
+.st-indent{ text-indent:calc(var(--st-col) * 1.2); }
+.st-big a{
+  text-decoration:underline;
+  text-decoration-thickness:.07em;
+  text-underline-offset:.12em;
+}
+.st-big a:hover{ text-decoration-thickness:.14em; }
+
+.st-split{
+  display:grid;
+  grid-template-columns:var(--st-col) minmax(0,1fr) minmax(0,.78fr);
+  column-gap:var(--st-gut);
+  padding:clamp(60px,12vh,140px) var(--st-gut) 0;
+  align-items:start;
+}
+.st-split-text{
+  grid-column:2;
+  grid-row:1;
+  max-width:330px;
+  align-self:end;
+}
+.st-split-text p{
+  font:400 13px/1.6 Arial, Helvetica, sans-serif;
+}
+.st-split-text p + p{ margin-top:1.2em; }
+.st-split-fig{
+  grid-column:3;
+  grid-row:1 / span 2;
+  position:sticky;
+  top:84px;
+  margin:0;
+}
+.st-split-fig img{
+  width:100%;
+  height:auto;
+  max-height:calc(100vh - 140px);
+  object-fit:cover;
+  display:block;
+}
+.st-split-fig figcaption{
+  margin-top:8px;
+  text-align:right;
+  font:400 11px Arial, Helvetica, sans-serif;
+}
+.st-split-main{
+  grid-column:1 / span 2;
+  grid-row:2;
+  padding-top:clamp(80px,16vh,180px);
+}
+.st-split-main .st-big{ margin-left:0; }
+.st-mid{ font-size:clamp(20px,1.75vw,32px); }
+.st-label-top{
+  display:block;
+  margin:0 0 14px calc(var(--st-col) * 1.2);
+}
+.st-row{
+  display:grid;
+  grid-template-columns:calc(var(--st-col) * 1.2) minmax(0,1fr);
+  row-gap:12px;
+  padding:clamp(40px,7vh,70px) 0 0;
+}
+.st-no{ font:400 12px Arial, Helvetica, sans-serif; grid-row:1 / span 2; }
+.st-row .st-label{ grid-column:2; }
+.st-cols{
+  grid-column:2;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px 20px;
+}
+.st-cols ul{ list-style:none; margin:0; padding:0; }
+.st-cols li{ font:700 13px/1.45 Arial, Helvetica, sans-serif; }
+
+.st-works{
+  padding-top:clamp(90px,16vh,180px);
+  padding-bottom:clamp(60px,10vh,110px);
+}
+.st-work-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);
+  gap:clamp(36px,6vh,60px) var(--st-gut);
+  margin-left:var(--st-col);
+}
+.st-work{ display:block; }
+.st-work-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+  font:700 12px Arial, Helvetica, sans-serif;
+  text-transform:uppercase;
+}
+.st-work-head span:last-child{ font-weight:400; text-transform:none; color:#555; }
+.st-work-media{
+  display:block;
+  aspect-ratio:16/10;
+  overflow:hidden;
+  background:#ddd;
+}
+.st-work-media img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .8s cubic-bezier(.22,1,.36,1);
+}
+.st-work:hover .st-work-media img{ transform:scale(1.03); }
+
+.st-corner{
+  position:fixed;
+  bottom:12px;
+  z-index:50;
+  font:700 11px Arial, Helvetica, sans-serif;
+  color:#fff;
+  mix-blend-mode:difference;
+  pointer-events:none;
+}
+.st-corner-l{ left:var(--st-gut); }
+.st-corner-r{ right:var(--st-gut); font-variant-numeric:tabular-nums; }
+
+@media(max-width:900px){
+  .st-page{ --st-col:0%; }
+  .st-side{ position:static; display:block; margin-bottom:12px; }
+  .st-indent{ text-indent:0; }
+  .st-split{ grid-template-columns:minmax(0,1fr); }
+  .st-split-text,
+  .st-split-fig,
+  .st-split-main{ grid-column:1; grid-row:auto; }
+  .st-split-fig{ position:static; margin-top:28px; }
+  .st-label-top{ margin-left:0; }
+  .st-row{ grid-template-columns:40px minmax(0,1fr); }
+  .st-work-grid{ grid-template-columns:minmax(0,1fr); }
+  .st-tag{ display:none; }
+}
+@media(max-width:520px){
+  .st-cols{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+}
+
+/* MY STORY — journey, as magazine spreads. Each step is a spread of two
+   pages, filling the screen edge to edge. Odd steps: the photo fills the left page, its title
+   set big in red bold capitals at the top and its number in brackets at
+   the foot. Even steps: both pages are plain paper, the title and number
+   on the left and the photo set small across the fold. The words run in
+   a narrow red column ranged right on the right page, and where it
+   happened sits at its foot. Click a photo to open it whole. */
+.st-journey{
+  position:relative;
+  color:var(--st-ink);
+  border-top:1px solid rgba(13,13,13,.14);
+  margin-top:clamp(60px,10vh,120px);
+  padding:clamp(28px,5vh,56px) 0 0;
+  --sp-red:#e3110f;
+  --sp-paper:var(--st-bg);          /* the page's own grey, so the spreads sit in it */
+}
+.st-journey > .st-side{
+  position:static;
+  display:block;
+  padding:0 var(--st-gut) clamp(18px,3vh,28px);
+}
+/* every spread is the whole screen, edge to edge, one after another like
+   turning pages; a hairline marks where one ends and the next begins */
+.st-spreads{
+  display:grid;
+}
+.st-sp{
+  position:relative;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  height:100vh;
+  min-height:560px;
+  background:var(--sp-paper);
+  overflow:hidden;
+  border-top:1px solid rgba(13,13,13,.12);
+}
+.st-sp-left{
+  position:relative;
+  overflow:hidden;
+}
+.st-sp-plain{ border-right:1px solid rgba(13,13,13,.08); }
+.st-sp-fig{ margin:0; cursor:zoom-in; }
+.st-sp-photo{
+  position:absolute;
+  inset:0;
+}
+.st-sp-fig img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.st-sp-title{
+  position:absolute;
+  z-index:1;
+  top:clamp(84px,12vh,120px);
+  left:clamp(20px,3.6vw,68px);
+  margin:0;
+  font:700 clamp(36px,6.4vw,124px)/.88 Arial, Helvetica, sans-serif;
+  letter-spacing:-.035em;
+  text-transform:uppercase;
+  color:var(--sp-red);
+  pointer-events:none;
+}
+.st-sp-no{
+  position:absolute;
+  z-index:1;
+  left:clamp(20px,3.6vw,68px);
+  bottom:clamp(28px,6vh,64px);
+  font:700 clamp(36px,6vw,116px)/1 Arial, Helvetica, sans-serif;
+  letter-spacing:-.03em;
+  color:var(--sp-red);
+  pointer-events:none;
+}
+.st-sp-panel{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:flex-end;
+  padding:clamp(84px,12vh,120px) clamp(20px,3.6vw,68px) clamp(28px,6vh,64px);
+}
+.st-sp-text{
+  width:min(100%,clamp(170px,17vw,320px));
+}
+.st-sp-text p,
+.st-sp-when{
+  font:700 clamp(10px,.95vw,15px)/1.22 Arial, Helvetica, sans-serif;
+  letter-spacing:.01em;
+  text-transform:uppercase;
+  text-align:right;
+  color:var(--sp-red);
+}
+.st-sp-text p + p{ margin-top:1.25em; }
+.st-sp-when{ width:min(100%,clamp(150px,15vw,280px)); }
+/* the photo set small across the fold, a little left of centre, sized
+   off the screen's height so it always sits inside the spread */
+.st-sp-inset{
+  position:absolute;
+  z-index:2;
+  left:50%;
+  top:36%;
+  height:50%;
+  aspect-ratio:4 / 5;
+  transform:translateX(-58%);
+}
+@media(max-width:800px){
+  .st-sp{
+    grid-template-columns:minmax(0,1fr);
+    height:auto;
+    min-height:0;
+  }
+  .st-sp-left{ aspect-ratio:1; }
+  .st-sp-title{ top:20px; left:20px; }
+  .st-sp-no{ left:20px; bottom:20px; }
+  .st-sp-panel{ padding:24px 20px 28px; }
+  .st-sp-plain{ aspect-ratio:auto; min-height:220px; border-right:0; }
+  .st-sp-inset{
+    position:relative;
+    left:auto;
+    top:auto;
+    height:auto;
+    transform:none;
+    width:62%;
+    margin:0 auto 8px;
+    order:2;
+  }
+  .st-sp-b .st-sp-panel{ order:3; }
+  .st-sp-panel{ gap:26px; }
+  .st-sp-text,
+  .st-sp-when{ width:min(100%,260px); }
+  .st-sp-text p,
+  .st-sp-when{ font-size:11px; }
+}
+/* while a photo is open in the lightbox its slot stays empty, so it can
+   fly back to it */
+.st-sp-fig.is-open img{ visibility:hidden; }

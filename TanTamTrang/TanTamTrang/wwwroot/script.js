@@ -1512,7 +1512,8 @@ if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
     'index.html': 'HOME',
     'works.html': 'WORKS',
     'contact.html': 'CONTACT',
-    'about.html': 'ABOUT'
+    'about.html': 'ABOUT',
+    'my-story.html': 'MY STORY'
   };
 
   const currentName = pageNames[currentFile] || 'PAGE';
@@ -3227,7 +3228,116 @@ document.addEventListener('DOMContentLoaded', () => {
   const setSrc = (el, src) => { if (el && el.getAttribute('src') !== src) el.src = src; };
   const decode = el => (el && el.decode ? el.decode().catch(() => {}) : Promise.resolve());
 
+  /* One page at a time (a .book[data-single]). The sheet on top carries the
+     page being read; under it the base page already holds the next one. A
+     turn swings the sheet away to the left around its own left edge and
+     fades it out as it goes, so the page underneath is simply there. Once
+     it is out of sight the sheet is re-imaged with that same page and set
+     flat again - a swap of identical pictures, nothing to see - and the base
+     moves on to the page after it. Same interface as the spread books, so
+     the one-at-a-time scrolling rule below covers these too. */
+  function initSingle(book) {
+    const base = book.querySelector('.book-page-single img');
+    const leaf = book.querySelector('.leaf');
+    const sheet = leaf && leaf.querySelector('.leaf-front img');
+    const sheen = leaf && leaf.querySelector('.leaf-sheen');
+    const stage = book.closest('.book-stage');
+    const numEl = stage && stage.querySelector('.book-num');
+    const totalEl = stage && stage.querySelector('.book-total');
+    if (!base || !leaf || !sheet) return null;
+
+    const prefix = book.dataset.prefix;
+    const from = parseInt(book.dataset.from, 10);
+    const to = parseInt(book.dataset.to, 10);
+    const PAGES = [];
+    for (let i = from; i <= to; i++) PAGES.push(prefix + String(i).padStart(2, '0') + '.jpg');
+    const N = PAGES.length;
+    if (N < 2) return null;
+    if (totalEl) totalEl.textContent = String(N).padStart(2, '0');
+    const page = i => PAGES[((i % N) + N) % N];
+
+    let cur = 0;
+    let gen = 0, active = false, paused = false, stopped = false;
+    let curAnims = [];
+
+    PAGES.forEach(src => { const im = new Image(); im.src = src; decode(im); });
+
+    function init() {
+      cur = 0;
+      leaf.style.transform = 'rotateY(0deg)';
+      leaf.style.opacity = '1';
+      setSrc(sheet, page(0));
+      setSrc(base, page(1));
+      if (numEl) numEl.textContent = '01';
+    }
+
+    const dead = token => stopped || token !== gen || !active;
+
+    async function turn(token) {
+      const dur = reduce ? 1 : FLIP_MS;
+      const a = leaf.animate(
+        [
+          { transform: 'rotateY(0deg)', opacity: 1, offset: 0 },
+          { transform: 'rotateY(-112deg)', opacity: 1, offset: 0.62 },
+          { transform: 'rotateY(-168deg)', opacity: 0, offset: 1 }
+        ],
+        { duration: dur, easing: EASE, fill: 'forwards' }
+      );
+      const aSheen = sheen ? sheen.animate(
+        [{ opacity: 0 }, { opacity: 0.55, offset: 0.5 }, { opacity: 0 }],
+        { duration: dur, easing: 'ease-in-out' }
+      ) : null;
+      curAnims = aSheen ? [a, aSheen] : [a];
+
+      try { await a.finished; } catch (e) { return; }
+      if (dead(token)) return;
+      curAnims.forEach(x => { try { x.cancel(); } catch (e) {} });
+      curAnims = [];
+
+      cur = (cur + 1) % N;
+      if (numEl) numEl.textContent = String(cur + 1).padStart(2, '0');
+      // the sheet is out of sight: give it the page now showing underneath,
+      // lay it flat again, and only then move the base on to the next one
+      setSrc(sheet, page(cur));
+      await decode(sheet);
+      if (dead(token)) return;
+      leaf.style.transform = 'rotateY(0deg)';
+      leaf.style.opacity = '1';
+      setSrc(base, page(cur + 1));
+    }
+
+    async function runCycle(token) {
+      init();
+      await wait(HOLD_MS + 450);
+      while (!dead(token)) {
+        if (paused) { await wait(200); continue; }
+        await turn(token);
+        if (dead(token)) break;
+        await wait(HOLD_MS);
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => { paused = document.hidden; });
+    window.addEventListener('pagehide', () => { stopped = true; });
+
+    init();
+    return {
+      book,
+      measure() {},
+      activate() { if (active || stopped) return; active = true; gen++; runCycle(gen); },
+      deactivate() {
+        if (!active) return;
+        active = false;
+        gen++;
+        curAnims.forEach(x => { try { x.cancel(); } catch (e) {} });
+        curAnims = [];
+        init();
+      }
+    };
+  }
+
   function initBook(book) {
+    if (book.hasAttribute('data-single')) return initSingle(book);
     const bpLeft  = book.querySelector('.book-page-left img');
     const bpRight = book.querySelector('.book-page-right img');
     const cast    = book.querySelector('.book-cast');
@@ -3467,6 +3577,37 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 /* =========================================================
+   MY STORY — HERO CUTS + MELBOURNE CLOCK
+   The hero cuts from scene to scene on a steady beat (a cut, not a
+   fade, like a reel), and the corner clock keeps Melbourne time.
+   ========================================================= */
+(function () {
+  const page = document.querySelector('.st-page');
+  if (!page) return;
+  const slides = [...page.querySelectorAll('.st-slide')];
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (slides.length > 1 && !reduce) {
+    let i = 0;
+    setInterval(() => {
+      if (document.hidden) return;
+      slides[i].classList.remove('is-on');
+      i = (i + 1) % slides.length;
+      slides[i].classList.add('is-on');
+    }, 2400);
+  }
+  const clock = document.getElementById('stClock');
+  if (clock) {
+    let fmt;
+    try {
+      fmt = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short' });
+    } catch (e) { fmt = null; }
+    const tick = () => { clock.textContent = fmt ? fmt.format(new Date()) : new Date().toLocaleTimeString(); };
+    tick();
+    setInterval(tick, 1000);
+  }
+})();
+
+/* =========================================================
    CONTACT — COPY EMAIL
    The button next to the address puts it on the clipboard and says
    so for a moment. Where the clipboard is not allowed it selects the
@@ -3558,8 +3699,8 @@ document.addEventListener('DOMContentLoaded', () => {
    slot stays put for the zoom-out.
    ========================================================= */
 (function () {
-  // the Poster page's staircase grid shares this lightbox
-  const grid = document.querySelector('.photo-grid, .pst-grid');
+  // the Poster page's staircase grid and the My Story journey share this lightbox
+  const grid = document.querySelector('.photo-grid, .pst-grid, .st-jlist');
   const lb = document.getElementById('photoLb');
   if (!grid || !lb) return;
   const frame = lb.querySelector('.photo-lb-frame');

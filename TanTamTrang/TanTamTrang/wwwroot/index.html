@@ -7,7 +7,10 @@
   <title>HOME - TTT</title>
   <meta name="description" content="Portfolio of Dao Trong Tan (TTT), a visual designer working in 3D, motion, poster, typography, photography and experience design. Selected works and contact.">
   <link rel="canonical" href="https://tantamtrang.com/">
-  <link rel="icon" type="image/png" href="images/favicon-192.png">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/favicon-192.png">
+  <link rel="apple-touch-icon" href="images/favicon-192.png">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TanTamTrang">
   <meta property="og:title" content="HOME - TTT">
@@ -18,7 +21,7 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=140">
+  <link rel="stylesheet" href="style.css?v=159">
 </head>
 
 <body class="home-video-body">
@@ -26,7 +29,7 @@
   <!-- Intro Preloader -->
   <div id="camcorder-preloader" data-nosnippet>
     <div class="camcorder-ui">
-      <h1 class="loading-title">TANTAMTRANG</h1>
+      <h1 class="loading-title" data-text="TANTAMTRANG">TANTAMTRANG</h1>
     </div>
   </div>
 
@@ -71,6 +74,7 @@
       <a href="works.html">Works</a>
       <a href="contact.html">Contact</a>
       <a href="about.html">About</a>
+      <a href="my-story.html">My Story</a>
     </nav>
   </header>
 
@@ -110,12 +114,12 @@
                poster="images/poster/mono-home.jpg" muted loop playsinline preload="none"></video>
       </div>
       <div class="home-slide">
-        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/ember-home.mp4"
-               poster="images/poster/ember-home.jpg" muted loop playsinline preload="none"></video>
-      </div>
-      <div class="home-slide">
         <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/c-works.mp4"
                poster="images/poster/c-works.jpg" muted loop playsinline preload="none"></video>
+      </div>
+      <div class="home-slide">
+        <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/home-new.mp4"
+               poster="images/poster/home.jpg" muted loop playsinline preload="none"></video>
       </div>
     </div>
     <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
@@ -125,7 +129,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-  <script src="script.js?v=140"></script>
+  <script src="script.js?v=159"></script>
 </body>
 
 </html>
