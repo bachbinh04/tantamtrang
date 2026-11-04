@@ -1116,40 +1116,58 @@ function refetchClip(v, base, st) {
 
 
 /* =========================
-   V8 3D CREATIVE CODING (THREE.JS + GSAP)
-   The original home intro: a cylinder of the transition images
-   spins up, the featured one zooms to fill the screen, the 3D
-   canvas fades out — then the infinite video reel underneath
-   takes over.
+   HOME INTRO
+   About five seconds over black, run on one GSAP timeline:
+     01  0.0-1.0  darkness: film grain, the viewfinder's settings faint at
+                  the edges, REC and a running timecode flickering
+     02  1.0-1.7  the TANTAMTRANG mark glitches in - RGB split, cut bands,
+                  stretched and skewed - and resolves into clean type
+     03  1.8-2.5  it blinks, on and off, like a light on a bad contact,
+                  and goes out
+     04  2.5-4.4  the clips are laid on a pile one by one, square and
+                  exactly on top of each other - canyon, sea, city,
+                  c-works, poodle, fish, mono, video - and bugs-home last
+     05  4.8-5.6  bugs-home zooms to fill the screen
+     06  5.6-6.1  the homepage takes over on bugs-home, which it opens on,
+                  lined up to the same frame
+   Those are timeline seconds; it plays at TEMPO (1.3x), so about 4.7s in
+   all.
+   The clips are short cuts (media/intro, 0.6s each at 720p - each plays
+   while it is on top, then holds its frame under the next; bugs-home is
+   the 8s clip the reel is synced to), fetched only when the intro plays.
+   If they are not ready by the last blink, the mark holds, flickering,
+   until they are - three seconds at most. Plays once per visit (the <head>
+   script reads sessionStorage); SKIP INTRO or Esc ends it at once; reduced
+   motion gets a short still reveal. Everything it started - tweens,
+   timers, listeners, videos - is stopped at the end.
    ========================= */
 const canvasContainer = document.getElementById('canvas-container');
-const webglCanvas = document.getElementById('webgl-canvas');
+const INTRO_SEEN_KEY = 'tttIntroSeen';
 
-/* Fail-safe: whatever happens to the intro (a texture 404, a blocked
-   library, a stalled GSAP timeline), never let its opaque black layers
-   sit on top of the reel forever — but never pre-empt a healthy intro
-   either, so when we do step in we FADE, we don't cut.
-     - if the GSAP timeline never even started within 10s, the libs or
-       textures are dead: dismiss now.
-     - if it started but still hasn't finished after 20s, it's wedged:
-       dismiss then. A normal run (even a slow one) finishes well inside
-       that and clears these layers itself with its own 2s fade. */
+function markIntroSeen() {
+  try { sessionStorage.setItem(INTRO_SEEN_KEY, '1'); } catch (e) {}
+}
+
+/* Fail-safe: whatever happens to the intro (a stalled timeline, a library
+   that never arrived), never let its black layers sit on the homepage. If
+   the timeline never even started within 10s, dismiss; if it started but
+   is still running after 20s, dismiss then. A background tab freezes the
+   timeline without it being broken, so wait for the visitor there. */
 function dismissIntroLayers() {
   if (window.introFinished) return;
   window.introFinished = true;
   [document.getElementById('canvas-container'),
-   document.getElementById('camcorder-preloader')].forEach((el) => {
+   document.getElementById('camcorder-preloader'),
+   document.getElementById('introSkip')].forEach((el) => {
     if (!el || getComputedStyle(el).display === 'none') return;
     el.style.transition = 'opacity .8s ease';
     el.style.opacity = '0';
     setTimeout(() => { el.style.display = 'none'; }, 850);
   });
-  if (window.animationFrameId) cancelAnimationFrame(window.animationFrameId);
+  document.documentElement.classList.remove('intro-lock');
+  markIntroSeen();
   if (window.__introCleanup) window.__introCleanup();
 }
-/* In a background tab rAF is frozen, so GSAP never ticks and the timeline
-   genuinely cannot start — that is not a wedged intro, it is a visitor who
-   has not looked yet. Wait for them instead of burning the intro unseen. */
 (function armIntroFailSafe() {
   setTimeout(() => {
     if (window.introStarted || window.introFinished) return;
@@ -1165,327 +1183,234 @@ function dismissIntroLayers() {
   }, 20000);
 })();
 
-if (canvasContainer && webglCanvas && window.THREE && window.gsap) {
-  // 1. Setup Three.js Scene
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x000000, 0.03); // Cinematic fog
+(function () {
+  const root = document.documentElement;
+  const pre = document.getElementById('camcorder-preloader');
+  const skipBtn = document.getElementById('introSkip');
+  const introOn = root.classList.contains('intro-on');
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 0, 0); // Camera is in the center of the cylinder
+  // Not this time (already played this visit, or no script ran in <head>):
+  // the layers are hidden by the stylesheet; just tell the reel to go.
+  if (!introOn || !canvasContainer || !pre) {
+    window.introFinished = true;
+    return;
+  }
+  if (!window.gsap) {
+    // the animation library is blocked or offline: show the homepage
+    root.classList.remove('intro-on');
+    window.introFinished = true;
+    markIntroSeen();
+    return;
+  }
 
-  const renderer = new THREE.WebGLRenderer({
-    canvas: webglCanvas,
-    alpha: true,
-    antialias: true
-  });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // the viewfinder and the REC caption are optional: if one has been taken
+  // out of the page, the timeline animates a stand-in nobody sees
+  const hud = document.getElementById('camHud') || document.createElement('div');
+  const logo = document.getElementById('igLogo');
+  const rec = document.getElementById('igRec') || document.createElement('p');
+  const tcEl = document.getElementById('igTc');
+  const tEl = document.getElementById('camTime');
+  const dEl = document.getElementById('camDate');
+  const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const INTRO_CLIP_OFFSET = 0.5;   // bugs-home here was cut 0.5s into the reel's master
+  const STEP = 0.24;               // between one sheet landing and the next
+  const CUTS_AT = 2.5;             // the first sheet lands
+  const TEMPO = 1.3;               // playback speed of the whole timeline (times above are before it)
+  const HOLD_AT = 2.3;             // where the mark waits, if the clips are late
+  const HOLD_MAX = 3000;
 
-  // 3. Create the cylindrical carousel — every panel is a live video now.
-  //    bugs-home sits at index 0: it is the panel parked in front of the
-  //    camera on load, and the one that zooms out to fill the screen when
-  //    the spin ends, exactly as the still hero used to.
-  //
-  //    These clips are served from this site, NOT from the Release CDN the
-  //    reel below uses: release assets carry no Access-Control-Allow-Origin,
-  //    so WebGL would refuse them as a tainted texture. They are small on
-  //    purpose (~3 MB for all eight) because the intro is what the visitor
-  //    waits on — the full-quality versions still stream in underneath.
-  const MEDIA = [
-    { src: 'media/intro/bugs-home.mp4',   poster: 'images/poster/bugs-home.jpg' },  // hero
-    { src: 'media/intro/city-home.mp4',   poster: 'images/poster/city-home.jpg' },
-    { src: 'media/intro/fish-home.mp4',   poster: 'images/poster/fish-home.jpg' },
-    { src: 'media/intro/video-home.mp4',  poster: 'images/poster/video-home.jpg' },
-    { src: 'media/intro/canyon-home.mp4', poster: 'images/poster/canyon-home.jpg' },
-    { src: 'media/intro/mono-home.mp4',   poster: 'images/poster/mono-home.jpg' },
-    { src: 'media/intro/ember-home.mp4',  poster: 'images/poster/ember-home.jpg' },
-    { src: 'media/intro/c-works.mp4',     poster: 'images/poster/c-works.jpg' }
+  root.classList.add('intro-lock');
+  window.introStarted = true;      // tell the fail-safe the intro is live
+
+  // ---- the clips, in the order they cut; bugs-home is last
+  const clips = [...canvasContainer.querySelectorAll('.iv-clip')];
+  const hero = canvasContainer.querySelector('.iv-hero');
+
+  // ---- the viewfinder's clock, and the caption's timecode (25 fps)
+  const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const pad = (n) => String(n).padStart(2, '0');
+  function clock() {
+    const d = new Date();
+    const hr = d.getHours();
+    if (tEl) tEl.textContent = (hr < 12 ? 'AM ' : 'PM ') + pad(hr % 12 || 12) + ' : ' + pad(d.getMinutes()) + ' : ' + pad(d.getSeconds());
+    if (dEl) dEl.textContent = MONTHS[d.getMonth()] + '. ' + pad(d.getDate()) + ' ' + d.getFullYear();
+  }
+  clock();
+  const t0 = performance.now();
+  const timers = [
+    setInterval(clock, 1000),
+    setInterval(() => {
+      if (!tcEl) return;
+      const f = Math.floor((performance.now() - t0) / 40);
+      tcEl.textContent = '00:' + pad(Math.floor(f / 1500) % 60) + ':' + pad(Math.floor(f / 25) % 60) + ':' + pad(f % 25);
+    }, 40)
   ];
 
-  const textureLoader = new THREE.TextureLoader();
-  const totalImages = MEDIA.length;
-  // Tang radius de khoang cach giua cac hinh rong hon
-  const radius = Math.max(15, totalImages * 3.5);
+  let tl = null;
+  let done = false;
+  let skipped = false;
 
-  const carouselGroup = new THREE.Group();
-  scene.add(carouselGroup);
-
-  let introFinished = false; // Flag kiem soat hieu ung zoom dau trang
-  const planes = [];
-  const introVideos = [];
-  const introTextures = [];
-
-  const loadingPct = document.getElementById('load-pct');
-  const preloader = document.getElementById('camcorder-preloader');
-
-  // Every clip is 1920x1080, so the panel size is known up front — no need to
-  // wait for a texture before the cylinder can exist. One shared geometry.
-  const panelH = radius * 0.45;
-  const panelW = panelH * (16 / 9);
-  const panelGeo = new THREE.PlaneGeometry(panelW, panelH, 1, 1);
-
-  /* On a phone held upright the camera saw less across than one panel is
-     wide, so the cylinder spun by as an unreadable crop. Widen the vertical
-     field of view just enough that the panel in front fits across the screen
-     with a little air either side; any screen wide enough for that already
-     keeps the 75deg the scene was composed at. */
-  function fitFov() {
-    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
-    const need = 2 * Math.atan((panelW * 1.12) / (2 * radius * aspect)) * 180 / Math.PI;
-    camera.fov = Math.max(75, need);
-    camera.aspect = aspect;
-    camera.updateProjectionMatrix();
-  }
-  fitFov();
-
-  // Off-screen but still laid out: display:none would let the browser suspend
-  // decoding, and a suspended video hands WebGL a frozen frame.
-  const videoHost = document.createElement('div');
-  videoHost.setAttribute('aria-hidden', 'true');
-  videoHost.style.cssText =
-    'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;' +
-    'opacity:0;pointer-events:none;z-index:-1';
-  document.body.appendChild(videoHost);
-
-  let readyCount = 0;
-  let launched = false;
-  let heroVideo = null;
-  // the intro clips were cut with -ss 0.5, so clip time + this = master time
-  const INTRO_CLIP_OFFSET = 0.5;
-
-  MEDIA.forEach((item, index) => {
-    const material = new THREE.MeshBasicMaterial({
-      side: THREE.DoubleSide,
-      transparent: true
-    });
-
-    // Dam bao hinh chinh (index 0) luon hien thi de len cac hinh khac khi phong to
-    if (index === 0) material.depthTest = false;
-
-    const plane = new THREE.Mesh(panelGeo, material);
-    if (index === 0) plane.renderOrder = 10;
-
-    // Cong them Math.PI de hinh dau tien nam ngay truoc mat Camera khi moi load
-    const angle = (index / totalImages) * Math.PI * 2 + Math.PI;
-    plane.position.x = Math.sin(angle) * radius;
-    plane.position.z = Math.cos(angle) * radius;
-    // lookAt already aims the plane's front (+Z) straight at the camera in
-    // the middle. The extra 180deg turn this used to carry span it round to
-    // its BACK face, which side:DoubleSide rendered without complaint — as a
-    // horizontal mirror. Never showed on the abstract stills; obvious the
-    // moment real footage went on the panels.
-    plane.lookAt(0, 0, 0);
-
-    carouselGroup.add(plane);
-    planes[index] = plane;
-
-    // Poster first so a panel is never an empty black rectangle, then the
-    // video takes the slot over the moment it has a decodable frame.
-    textureLoader.load(item.poster, (t) => {
-      if (material.userData.live) return;
-      t.generateMipmaps = true;
-      t.minFilter = THREE.LinearMipmapLinearFilter;
-      material.map = t;
-      material.needsUpdate = true;
-      introTextures.push(t);
-    });
-
-    const video = document.createElement('video');
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = 'auto';
-    video.setAttribute('muted', '');
-    video.setAttribute('playsinline', '');
-    video.setAttribute('loop', '');
-    video.src = item.src;
-    videoHost.appendChild(video);
-    introVideos.push(video);
-    if (index === 0) heroVideo = video;
-
-    let counted = false;
-    const countIn = () => {
-      if (counted) return;
-      counted = true;
-      readyCount++;
-      if (loadingPct) loadingPct.innerText = Math.round((readyCount / totalImages) * 100);
-      if (readyCount === totalImages) launch();
-    };
-
-    video.addEventListener('loadeddata', () => {
-      if (!material.userData.live) {
-        material.userData.live = true;
-        const vt = new THREE.VideoTexture(video);
-        vt.minFilter = THREE.LinearFilter;   // video frames are NPOT: no mipmaps
-        vt.magFilter = THREE.LinearFilter;
-        vt.generateMipmaps = false;
-        vt.wrapS = vt.wrapT = THREE.ClampToEdgeWrapping;
-        material.map = vt;
-        material.needsUpdate = true;
-        introTextures.push(vt);
-      }
-      video.play().catch(() => {});
-      countIn();
-    }, { once: true });
-
-    // A dead clip must not hold the door shut — the poster carries that panel.
-    video.addEventListener('error', countIn, { once: true });
-    video.load();
-  });
-
-  // Free the decoders the moment the intro is done: the reel underneath has
-  // eight videos of its own and does not need to share the GPU with these.
   window.__introCleanup = function () {
-    introVideos.forEach((v) => {
-      try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
-    });
-    introVideos.length = 0;
-    introTextures.forEach((t) => { try { t.dispose(); } catch (e) {} });
-    introTextures.length = 0;
-    if (videoHost.parentNode) videoHost.parentNode.removeChild(videoHost);
+    timers.forEach(clearInterval);
+    if (tl) tl.kill();
+    clips.forEach((v) => { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {} });
+    document.removeEventListener('keydown', onKey);
+    if (skipBtn) skipBtn.removeEventListener('click', skip);
   };
 
-  function launch() {
-    if (launched) return;
-    launched = true;
-
-    const startIntro = () => {
-      window.introStarted = true; // tell the fail-safe the timeline is live
-      const tl = gsap.timeline();
-
-      // Tinh toan ty le phong to vua khit man hinh (dua tren FOV va khoang cach)
-      const vFov = camera.fov * Math.PI / 180;
-      const visibleHeight = 2 * Math.tan(vFov / 2) * radius;
-      const visibleWidth = visibleHeight * camera.aspect;
-
-      const pW = panelW;
-      const pH = panelH;
-
-      const scaleY = visibleHeight / pH;
-      const scaleX = visibleWidth / pW;
-      // Upright screens show the reel's clips whole, so the hero lands whole
-      // there too - fitted across rather than cropped - or the dissolve into
-      // the reel would read as a cut instead of one continuous shot.
-      const targetScale = window.matchMedia('(orientation: portrait)').matches
-        ? Math.min(scaleX, scaleY)
-        : Math.max(scaleX, scaleY) * 1.02; // Lay ty le lon hon va +2% bu goc canh
-
-      // 1. Xoay cuc nhanh 2 vong voi nhip do gat va dien anh hon (expo)
-      tl.to(carouselGroup.rotation, {
-        y: Math.PI * 4,
-        duration: 3.2,
-        ease: "expo.inOut"
-      });
-
-      // 2. Anticipation: Phong nho (co lai) nhe hon de lay da truoc khi no tung ra
-      tl.to(planes[0].scale, {
-        x: 0.9, y: 0.9, z: 0.9,
-        duration: 0.8,
-        ease: "power2.out"
-      }, "-=0.8");
-
-      // 3. Phong to manh me ra vua khit man hinh
-      tl.to(planes[0].scale, {
-        x: targetScale, y: targetScale, z: targetScale,
-        duration: 1.4,
-        ease: "power4.inOut"
-      });
-
-      // 3b. Lift the fog off the hero as it fills the frame, so the clip lands
-      //     at full brightness instead of half-swallowed by the cylinder haze.
-      tl.to(scene.fog, {
-        density: 0,
-        duration: 1.4,
-        ease: "power2.inOut"
-      }, "<");
-
-      // 4. Cho 0.1s roi fade out toan bo Canvas 3D (nen den) de lo dan video reel ben duoi
-      tl.to("#canvas-container", {
-        opacity: 0,
-        duration: 2,
-        ease: "power2.out",
-        onStart: () => {
-          // Tell the reel underneath which frame of bugs-home we are holding,
-          // so its own copy can line up before this canvas dissolves away.
-          window.dispatchEvent(new CustomEvent('intro:handoff', {
-            detail: {
-              time: heroVideo && isFinite(heroVideo.currentTime)
-                ? heroVideo.currentTime + INTRO_CLIP_OFFSET : null
-            }
-          }));
-        },
-        onComplete: () => {
-          introFinished = true; // Ket thuc intro 3D
-          window.introFinished = true; // let the fail-safe know it's done
-
-          // Intro xong -> nhuong lai cho video reel dang chay ben duoi
-          canvasContainer.style.display = 'none';
-
-          // Huy 3D animation loop de tiet kiem tai nguyen
-          if (window.animationFrameId) {
-            cancelAnimationFrame(window.animationFrameId);
-          }
-          if (window.__introCleanup) window.__introCleanup();
-        }
-      }, "+=0.1");
-    };
-
-    if (preloader) {
-      gsap.to(preloader, {
-        opacity: 0,
-        duration: 1.5,
-        delay: 0.5,
-        ease: "power2.inOut",
-        onComplete: () => {
-          preloader.style.display = 'none';
-          startIntro();
-        }
-      });
-    } else {
-      startIntro();
-    }
+  function finish() {
+    if (done) return;
+    done = true;
+    window.introFinished = true;
+    canvasContainer.style.display = 'none';
+    pre.style.display = 'none';
+    if (skipBtn) skipBtn.style.display = 'none';
+    root.classList.remove('intro-lock');
+    markIntroSeen();
+    window.__introCleanup();
   }
 
-  // Never let one slow clip keep the visitor on the loading title: whatever
-  // has arrived by now goes on stage, the rest keep their posters.
-  setTimeout(launch, 6000);
-
-  // Floating animation
-  const clock = new THREE.Clock();
-
-  function animate() {
-    window.animationFrameId = requestAnimationFrame(animate);
-    const elapsedTime = clock.getElapsedTime();
-
-    if (introFinished) {
-      // Khi da vao trang home, tu dong cuon (xoay) khong co diem dung
-      carouselGroup.rotation.y += 0.002;
-    }
-
-    // Add subtle floating effect to planes
-    planes.forEach((plane, index) => {
-      if (plane) {
-        plane.position.y = Math.sin(elapsedTime * 0.8 + index) * 0.3;
+  // the reel lines its first clip up with the frame bugs-home is showing
+  let handed = false;
+  function handoff() {
+    if (handed) return;
+    handed = true;
+    window.dispatchEvent(new CustomEvent('intro:handoff', {
+      detail: {
+        time: hero && isFinite(hero.currentTime) && hero.currentTime > 0
+          ? hero.currentTime + INTRO_CLIP_OFFSET : null
       }
-    });
-
-    renderer.render(scene, camera);
+    }));
   }
-  animate();
 
-  // Handle Resize
-  window.addEventListener('resize', () => {
-    fitFov();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  function skip() {
+    if (done || skipped) return;
+    skipped = true;
+    if (tl) tl.kill();
+    handoff();
+    gsap.to([pre, canvasContainer, skipBtn], { opacity: 0, duration: 0.45, ease: 'power2.out', onComplete: finish });
+  }
+  function onKey(e) { if (e.key === 'Escape') skip(); }
+  if (skipBtn) skipBtn.addEventListener('click', skip);
+  document.addEventListener('keydown', onKey);
+
+  // ---------------------------------------------------------------- reduced motion
+  if (reduce) {
+    gsap.set(logo, { opacity: 1 });
+    gsap.set(hud, { opacity: 0.35 });
+    tl = gsap.timeline()
+      .to(skipBtn, { opacity: 1, duration: 0.3 }, 0)
+      .add(handoff, 1.3)
+      .to([pre, canvasContainer, skipBtn], { opacity: 0, duration: 0.5 }, 1.3)
+      .add(finish);
+    return;
+  }
+
+  // ---- fetch the clips now. A short play and pause makes the phones that
+  //      ignore preload (iOS) buffer them too.
+  const play = (v) => { const p = v.play(); if (p && p.catch) p.catch(() => {}); return p; };
+  clips.forEach((v) => {
+    v.muted = true;
+    v.preload = 'auto';
+    v.src = v.dataset.src;
+    const p = play(v);
+    if (p && p.then) p.then(() => { if (!handed && v.dataset.live !== '1') { v.pause(); v.currentTime = 0; } }, () => {});
+  });
+  const ready = (v) => v.readyState >= 3 || !!v.error;
+
+  // If the clips are still on their way at the last blink, hold the mark
+  // there, flickering, until they are - or HOLD_MAX has passed.
+  function holdForClips() {
+    if (clips.every(ready)) return;
+    tl.pause();
+    logo.classList.add('is-flicker');
+    const since = performance.now();
+    const wait = setInterval(() => {
+      if (done || skipped) { clearInterval(wait); return; }   // skipped: never restart it
+      if (!clips.every(ready) && performance.now() - since < HOLD_MAX) return;
+      clearInterval(wait);
+      logo.classList.remove('is-flicker');
+      tl.resume();
+    }, 50);
+    timers.push(wait);
+  }
+  // each clip starts rolling a moment before it lands, and stops once the
+  // next sheet covers it; bugs-home rolls from the hold on, into the homepage
+  function roll(v) { v.dataset.live = '1'; v.currentTime = 0; play(v); }
+
+  // ---------------------------------------------------------------- the timeline
+  gsap.set(logo, { opacity: 0, scaleX: 1.35, skewX: -14, '--split': '18px' });
+  gsap.set(hud, { opacity: 0 });
+  gsap.set(rec, { opacity: 0 });
+  const cards = clips.map((v) => v.parentNode);
+  const heroCard = hero.parentNode;
+  gsap.set(cards, { xPercent: -50, yPercent: -50, autoAlpha: 0 });
+
+  tl = gsap.timeline();
+  // 01 - darkness: grain, faint viewfinder, flickering caption
+  tl.to(hud, { opacity: 0.45, duration: 0.6, ease: 'steps(6)' }, 0.1)
+    .to(rec, { opacity: 0.75, duration: 0.25, ease: 'steps(3)', onComplete: () => rec.classList.add('is-flicker') }, 0.25)
+    .to(skipBtn, { opacity: 1, duration: 0.4 }, 0.4)
+
+  // 02 - the mark: glitches in, the split and stretch collapse, it settles clean
+    .add(() => logo.classList.add('is-glitch'), 1.0)
+    .to(logo, { opacity: 1, duration: 0.5, ease: 'steps(7)' }, 1.0)
+    .to(logo, { scaleX: 1, skewX: 0, '--split': '0px', duration: 0.65, ease: 'expo.out' }, 1.05)
+    .add(() => logo.classList.remove('is-glitch'), 1.7)
+
+  // 03 - it blinks out: off, on, off, on (splitting), off, on... and out
+    .set(logo, { opacity: 0 }, 1.8)
+    .set(logo, { opacity: 1 }, 1.88)
+    .set(logo, { opacity: 0 }, 1.98)
+    .set(logo, { opacity: 1 }, 2.04)
+    .add(() => logo.classList.add('is-glitch'), 2.04)
+    .add(() => logo.classList.remove('is-glitch'), 2.14)
+    .set(logo, { opacity: 0 }, 2.16)
+    .set(logo, { opacity: 1 }, 2.22)
+    .add(() => hero && roll(hero), HOLD_AT - 0.01)
+    .add(holdForClips, HOLD_AT)
+    .set(logo, { opacity: 0 }, 2.38)
+    .set(logo, { opacity: 1 }, 2.43)
+    .set(logo, { opacity: 0 }, 2.46)
+    .add(() => rec.classList.remove('is-flicker'), 2.46)   // the flicker would hold it up
+    .set([hud, rec], { opacity: 0 }, 2.46);
+
+  // 04 - the pile: each sheet drops square onto it from just above the
+  //      camera and lands exactly on the one before; bugs-home last
+  let t = CUTS_AT;
+  tl.set(pre, { display: 'none' }, t);
+  cards.forEach((card, i) => {
+    const v = clips[i];
+    const last = v === hero;
+    if (!last) tl.add(() => roll(v), Math.max(HOLD_AT + 0.02, t - 0.1));
+    tl.fromTo(card, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.08, ease: 'none', immediateRender: false }, t)
+      .fromTo(card, { scale: 1.25 }, { scale: 1, duration: 0.34, ease: 'power3.out', immediateRender: false }, t);
+    if (!last) tl.add(() => v.pause(), t + STEP + 0.12);
+    t += STEP;
   });
 
-} else if (canvasContainer) {
-  // Libraries blocked / offline: skip the 3D intro, just hide its layers.
-  canvasContainer.style.display = 'none';
-  const preloader = document.getElementById('camcorder-preloader');
-  if (preloader) preloader.style.display = 'none';
-}
+  // 05 - bugs-home zooms until it fills the screen, and
+  //      the pile under it fades
+  const landed = t - STEP;
+  const ZOOM_AT = landed + 0.4;
+  const ZOOM = 0.75;
+  // the card is a fixed width, and 9/16 of it tall
+  function fill() {
+    const w = heroCard.offsetWidth, ww = window.innerWidth, wh = window.innerHeight;
+    return ww < wh ? ww / w : Math.max(ww / w, wh / (w * 9 / 16));
+  }
+  tl.to(heroCard, { scale: fill, boxShadow: 'none', duration: ZOOM, ease: 'expo.inOut' }, ZOOM_AT)
+    .to(cards.filter((c) => c !== heroCard), { autoAlpha: 0, duration: 0.3 }, ZOOM_AT + ZOOM * 0.55);
+
+  // 06 - the homepage takes over on that same clip
+  t = ZOOM_AT + ZOOM + 0.05;
+  tl.to(skipBtn, { opacity: 0, duration: 0.25 }, t - 0.4)
+    .add(handoff, t)
+    .to(canvasContainer, { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, t)
+    .add(finish);
+  // and the whole of it runs a third faster than it is written
+  tl.timeScale(TEMPO);
+})();
 
 
 /* ==========================================

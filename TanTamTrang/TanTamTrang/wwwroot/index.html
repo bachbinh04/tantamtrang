@@ -21,22 +21,58 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <script>try{if(sessionStorage.getItem('ptEnter')==='1'){document.documentElement.classList.add('pt-enter');sessionStorage.removeItem('ptEnter');}}catch(e){}</script>
-  <link rel="stylesheet" href="style.css?v=159">
+  <!-- The intro plays once per visit: switched on here, before first paint,
+       only when it has not played yet this session (add ?intro to the address
+       to see it again). Without script it simply never appears; and if the
+       main script never arrives, it is switched off again after a few seconds. -->
+  <script>(function(){var d=document.documentElement,seen=false;try{seen=sessionStorage.getItem('tttIntroSeen')==='1';}catch(e){}if(seen&&!/[?&]intro\b/.test(location.search))return;d.classList.add('intro-on');setTimeout(function(){if(!window.introStarted&&!window.introFinished)d.classList.remove('intro-on');},9000);})();</script>
+  <link rel="stylesheet" href="style.css?v=170">
 </head>
 
 <body class="home-video-body">
 
-  <!-- Intro Preloader -->
+  <!-- Intro (script.js, "HOME INTRO"). About seven seconds:
+       darkness with a little timecode and film grain; the TANTAMTRANG mark
+       glitching in and resolving clean; the mark blinking out; the clips
+       laid on a pile one by one like sheets of paper, bugs-home last, which
+       zooms to fill the screen; and the homepage underneath taking over on
+       that same clip. Played once per visit
+       (sessionStorage); SKIP INTRO or Esc ends it at once; reduced motion
+       gets a short still reveal; without script it never shows (it is only
+       switched on by the script in <head>). -->
   <div id="camcorder-preloader" data-nosnippet>
-    <div class="camcorder-ui">
-      <h1 class="loading-title" data-text="TANTAMTRANG">TANTAMTRANG</h1>
+    <div class="cam-hud" id="camHud" aria-hidden="true">
+      <div class="cam-row cam-top">
+        <span class="cam-grp"><span></span><span>TANTAMTRANG</span></span>
+        <span class="cam-grp"><span>16:9</span><span class="cam-batt"><i></i><i></i><i></i></span></span>
+      </div>
+      <div class="cam-row cam-bottom">
+        <span class="cam-grp"><span id="camTime">AM 00 : 00 : 00</span><span id="camDate">JAN. 01 2026</span></span>
+        <span class="cam-grp cam-mid"><span>F4.5</span><span>ISO AUTO</span><span>1/50</span></span>
+        <span class="cam-grp"><span>4K</span><span>60FPS</span></span>
+      </div>
     </div>
+    <h1 class="loading-title" id="igLogo" data-text="TANTAMTRANG">TANTAMTRANG</h1>
+   
+    <div class="ig-grain" aria-hidden="true"></div>
   </div>
 
-  <!-- 3D intro canvas -->
-  <div id="canvas-container">
-    <canvas id="webgl-canvas"></canvas>
+  <!-- The clips the intro lays on a pile once the mark has blinked out,
+       one sheet at a time in this order; bugs-home last, which then zooms
+       to fill the screen - the clip the homepage opens on. Fetched only
+       when the intro actually plays. -->
+  <div id="canvas-container" aria-hidden="true">
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/canyon-home.mp4" poster="images/poster/canyon-home.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/sea-intro.mp4" poster="images/poster/sea-intro.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/city-home.mp4" poster="images/poster/city-home.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/c-works.mp4" poster="images/poster/c-works.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/poodle-intro.mp4" poster="images/poster/poodle-intro.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/fish-home.mp4" poster="images/poster/fish-home.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/mono-home.mp4" poster="images/poster/mono-home.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card"><video class="iv-clip" data-src="media/intro/video-home.mp4" poster="images/poster/video-home.jpg" muted playsinline preload="none"></video></div>
+    <div class="iv-card iv-hero-card"><video class="iv-clip iv-hero" data-src="media/intro/bugs-home.mp4" poster="images/poster/bugs-home.jpg" muted loop playsinline preload="none"></video></div>
   </div>
+  <button class="intro-skip" id="introSkip" type="button">Skip intro</button>
 
   <div class="page-transition" id="pageTransition" aria-hidden="true" data-nosnippet>
     <div class="transition-frame transition-frame-1"></div>
@@ -125,11 +161,10 @@
     <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
   </main>
 
-  <!-- Libraries for the 3D intro -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Library for the intro -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-  <script src="script.js?v=159"></script>
+  <script src="script.js?v=170"></script>
 </body>
 
 </html>
