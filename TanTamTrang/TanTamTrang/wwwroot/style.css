@@ -474,6 +474,29 @@ img{max-width:100%;display:block}
   border:1px solid rgba(255,255,255,.05);
   line-height:0;
 }
+.poster-title-long{
+  font-size:clamp(40px,9.5vw,136px);
+}
+/* A work page that has its name but not its pictures yet. */
+.work-soon{
+  max-width:1240px;
+  margin:0 auto;
+  padding:14vh 24px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  text-align:center;
+  font:11px/1.9 var(--mono);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.work-soon strong{
+  display:block;
+  margin-bottom:10px;
+  font:700 clamp(18px,2.4vw,28px)/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing:.06em;
+  color:#e8e8e4;
+}
 .calendar-showcase{
   display:flex;
   justify-content:center;
@@ -2371,11 +2394,11 @@ html.wc-split-done .page-enter-curtain::before{
   top:0;
   left:0;
   right:0;
-  height:72px;
+  height:54px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:0 26px;
+  padding:0 24px;
   z-index:100;
   background:linear-gradient(to bottom,rgba(5,5,5,.92),rgba(5,5,5,.56),rgba(5,5,5,.08),transparent);
   backdrop-filter:blur(4px);
@@ -2389,7 +2412,7 @@ html.wc-split-done .page-enter-curtain::before{
   font-family:Arial, Helvetica, sans-serif;
   font-style: normal;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 15px;
   letter-spacing: 0.05em;
   color:#f2f2ee;
   white-space:nowrap;
@@ -2408,7 +2431,7 @@ html.wc-split-done .page-enter-curtain::before{
   justify-content:space-between;
   font-family:Arial, Helvetica, sans-serif;
   font-weight:700;
-  font-size: 16px;
+  font-size: 12px;
   letter-spacing:.1em;
   text-transform:uppercase;
   margin-left:clamp(28px,12vw,240px);
@@ -2481,6 +2504,201 @@ body.home-video-body::-webkit-scrollbar{
 /* MVI_8495 is delivered already graded to black & white in the file;
    this only guarantees the look if the source is ever swapped back. */
 .home-video-mono{ filter:grayscale(1); }
+/* The About text over the clips, one part to a clip, low on the left. Its
+   colours are set on the slide by script.js from the clip itself (see
+   "HOME - TEXT TONES"): --hs-ink for the words, --hs-accent for the small
+   line above them, a shade of the clip's complement, --hs-glow a soft
+   shadow the opposite way so the words hold when the picture shifts, and
+   --hs-on-ink for anything set on a fill of --hs-ink.
+   They ease from one to the next as the clip plays. */
+
+.hs-copy {
+  position: absolute;
+  z-index: 1;
+  left: clamp(18px, 4vw, 72px);
+  bottom: clamp(40px, 11vh, 120px);
+  width: min(900px, 80vw);
+  color: var(--hs-ink, #f4f4f2);
+  text-shadow: var(--hs-glow, 0 1px 16px rgba(0,0,0,.45));
+  transition: color .5s linear, text-shadow .5s linear;
+  pointer-events: none;
+}
+
+.hs-kicker {
+  margin: 0 0 14px;
+  font: 700 11px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--hs-accent, currentColor);
+  transition: color .5s linear;
+}
+
+/* MAIN TITLE */
+.hs-title {
+  margin: 0 0 16px;
+  font: 700 clamp(48px, 7vw, 110px)/.95 Arial, Helvetica, sans-serif;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+
+/* SUBTITLE */
+.hs-text {
+  max-width: 44ch;
+  margin: 0;
+  font: 400 clamp(18px, 1.8vw, 26px)/1.5 Arial, Helvetica, sans-serif;
+}
+
+.hs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 400 clamp(13px, 1.05vw, 16px)/1.45 Arial, Helvetica, sans-serif;
+}
+
+.hs-list li + li {
+  margin-top: 4px;
+}
+
+.hs-list b {
+  font-weight: 700;
+}
+
+.hs-cv.about-cv {
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.hs-cv .cv-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font: 11px/1 var(--mono);
+  letter-spacing: .14em;
+  color: inherit;
+  background: rgba(0,0,0,.28);
+  text-shadow: none;
+  transition: background-color .25s ease, color .25s ease;
+}
+
+.hs-cv .cv-download {
+  background: var(--hs-ink, #f4f4f2);
+  border-color: var(--hs-ink, #f4f4f2);
+  color: var(--hs-on-ink, #050505);
+}
+
+.hs-cv .cv-view:hover,
+.hs-cv .cv-view:focus-visible {
+  background: var(--hs-ink, #f4f4f2);
+  color: var(--hs-on-ink, #050505);
+}
+
+.hs-cv .cv-download:hover,
+.hs-cv .cv-download:focus-visible {
+  background: rgba(0,0,0,.28);
+  color: inherit;
+}
+
+/* MOBILE */
+@media (orientation: portrait) {
+  .hs-copy {
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    width: auto;
+  }
+
+  .hs-kicker {
+    margin-bottom: 6px;
+    font-size: 9px;
+  }
+
+  .hs-title {
+    margin-bottom: 8px;
+    font-size: clamp(28px, 8vw, 48px);
+    line-height: .95;
+  }
+
+  .hs-text,
+  .hs-list {
+    font-size: clamp(14px, 3.5vw, 18px);
+    line-height: 1.4;
+  }
+
+  .hs-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .hs-list li + li {
+    margin-top: 1px;
+  }
+
+  .hs-cv.about-cv {
+    margin-top: 8px;
+    gap: 6px;
+  }
+
+  .hs-cv .cv-btn {
+    padding: 7px 12px;
+    font-size: 9px;
+  }
+}
+
+.hs-cv .cv-download{
+  background:var(--hs-ink,#f4f4f2);
+  border-color:var(--hs-ink,#f4f4f2);
+  color:var(--hs-on-ink,#050505);
+}
+.hs-cv .cv-view:hover,
+.hs-cv .cv-view:focus-visible{ background:var(--hs-ink,#f4f4f2); color:var(--hs-on-ink,#050505); }
+.hs-cv .cv-download:hover,
+.hs-cv .cv-download:focus-visible{ background:rgba(0,0,0,.28); color:inherit; }
+@media (orientation:portrait){
+  /* a band as tall as the clip: the words kept short and small */
+  .hs-copy{
+    left:16px;
+    right:16px;
+    bottom:14px;
+    width:auto;
+  }
+  .hs-kicker{ margin-bottom:6px; font-size:9px; }
+    .hs-title {
+        font-size: clamp(32px, 4.5vw, 72px);
+    }
+
+    .hs-text {
+        font-size: clamp(14px, 1.3vw, 19px);
+    }
+
+    @media (orientation: portrait) {
+        .hs-title {
+            font-size: clamp(22px, 6vw, 36px);
+        }
+
+        .hs-text,
+        .hs-list {
+            font-size: 12px;
+        }
+    }
+  .hs-list{
+    font-size:11px;
+    line-height:1.4;
+  }
+  .hs-text{
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .hs-list li + li{ margin-top:1px; }
+  .hs-cv.about-cv{ margin-top:8px; gap:6px; }
+  .hs-cv .cv-btn{ padding:7px 12px; font-size:9px; }
+}
 /* On upright screens script.js makes each slide a band exactly as tall as the
    clip's 16:9 picture across the full width, so cover shows every frame whole
    (bar the pixel of overlap between bands) with the clips touching. */
@@ -2759,16 +2977,16 @@ html.intro-lock body{ overflow:hidden; }
 @media(max-width:800px){
   .topbar{
     padding:0 18px;
-    height:66px;
+    height:50px;
   }
 
   .brand-static{
-    font-size:12px;
+    font-size:11px;
   }
 
   .topnav{
     gap:16px;
-    font-size:10px;
+    font-size:9px;
     margin-left:28px;
   }
 }
@@ -2782,12 +3000,12 @@ html.intro-lock body{ overflow:hidden; }
     padding:0 14px;
   }
   .brand-static{
-    font-size:11px;
+    font-size:10px;
     letter-spacing:.02em;
   }
   .topnav{
     gap:10px;
-    font-size:9px;
+    font-size:8.5px;
     letter-spacing:.05em;
     margin-left:16px;
   }
@@ -3240,7 +3458,7 @@ html.intro-lock body{ overflow:hidden; }
   content:"";
   position:absolute;
   left:50%;
-  bottom:-9px;
+  bottom:-7px;
   width:3px;
   height:3px;
   margin-left:-1.5px;

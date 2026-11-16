@@ -26,7 +26,7 @@
        to see it again). Without script it simply never appears; and if the
        main script never arrives, it is switched off again after a few seconds. -->
   <script>(function(){var d=document.documentElement,seen=false;try{seen=sessionStorage.getItem('tttIntroSeen')==='1';}catch(e){}if(seen&&!/[?&]intro\b/.test(location.search))return;d.classList.add('intro-on');setTimeout(function(){if(!window.introStarted&&!window.introFinished)d.classList.remove('intro-on');},9000);})();</script>
-  <link rel="stylesheet" href="style.css?v=170">
+  <link rel="stylesheet" href="style.css?v=172">
 </head>
 
 <body class="home-video-body">
@@ -122,49 +122,118 @@
        connections. None of them autoplays or preloads: autoplay overrode
        preload="none", so all eight began downloading the moment the page
        opened, and a phone would have started on the 1080p file before the
-       script could choose. script.js plays each clip as it comes on screen. -->
+       script could choose. script.js plays each clip as it comes on screen.
+       Over each clip, a part of the About text (hs-copy). Its colour follows
+       the clip: data-tones is the clip's average colour behind the text,
+       four times a second (measured from the file with ffmpeg - the release
+       host does not allow the page to read the pixels itself), and script.js
+       ("HOME - TEXT TONES") picks the one for the moment the clip is at. -->
   <main class="home-reel" id="homeReel">
-    <div class="home-reel-stage" id="homeReelStage" aria-hidden="true">
-      <div class="home-slide">
+    <div class="home-reel-stage" id="homeReelStage">
+      <div class="home-slide" data-tones="3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,392a0a,392a0a,392a0a,392a0a,392a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,392a0a,39290a,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,382909,392909,392909,382909,382909,382909,392909,392909,392a09,392909,392909,392a09,392a09,392a0a,3a2a0a,392a0a,392a0a,392a0a,3a2a0a,392a0a,392a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a,3a2a0a">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/bugs-home.mp4"
-               poster="images/poster/bugs-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/bugs-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+         
+          <h1 class="hs-title">WOMINDJEKA.</h1>
+          <h1 class="hs-text"> &middot; Melbourne - SaiGon</h1>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="363636,343434,333333,313131,323232,313131,323232,353535,363636,343434,333333,333333,333333,353535,353535,353535,353535,343434,343434,333333,363636,383838,383838,373737,353535,363636,363636,373737,373737,383838,393939,3a3a3a,393939,383838,383838,333333,323232,333333,363636,393939,3b3b3b,404040,424242,424242,3c3c3c,303030,2b2b2b,383838,464646,4b4b4b,474747,444444,414141,3f3f3f,3e3e3e,363636,383838,3a3a3a,404040,3f3f3f,3a3a3a,373737,373737,393939,393939,363636,2f2f2f,292929,3a3a3a,343434,373737,4a4a4a,454545,454545,444444,434343,404040,3e3e3e,3e3e3e,3e3e3e">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/city-home.mp4"
-               poster="images/poster/city-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/city-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+        
+          <h2 class="hs-title">A Communication Design student at RMIT University.</h2>
+          <p class="hs-text">Working across graphic design, art director, 3D and experience design &mdash; based in Melbourne, Australia. Rooted at SaiGon, Vietnam</p>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="16321e,143421,11321f,11321f,113420,0e2d1a,0e2b19,102b19,0f2a19,0d2d1c,0d2d1d,143928,193a28,153221,122c1b,17321f,132c1a,132c1a,142d1a,142c19,132c19,142d1a,142c19,132c19,142c19,152e1b,162f1b,17311c,18311e,183622,163623,163b28,18422d,1a4a33,1b4f37,194f36,165035,155235,165134,175939,185d3b,165535,1d5d3b,277148,2c794d,286c44,25643f,215d3a,1f5736,1c4e30,18472b,133920,11341c,12331c,13311b,15321c,17311c,17311d,18321d,19321d,19321d,18311d,18311d,18311d,18311d,17311d,16301d,142f1d,142f1e,132f1e,13301e,12301f,112e1e,102b1c,112d1d,112d1c,122c1c,15301e,16311f,16301e,17321f,183221,1a3422,1d3925,1e3b26">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/fish-home.mp4"
-               poster="images/poster/fish-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/fish-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          
+          <h2 class="hs-title">Quiet stories.</h2>
+          <p class="hs-text">I am drawn to images, colours and the quiet stories behind everyday visuals. For me, design is not just about making things look good, but about creating feelings and moments of connection.</p>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="2d2620,2d261f,2d2620,2d2620,2d2620,2d251f,2d251e,2c241d,2c241c,2c241a,2b241a,2b2419,2a2419,2a2318,2a2318,292318,292318,292218,282118,251f17,241e18,221c1c,1b161e,06061a,010219,01041e,020521,020724,030929,030b2a,040f2d,020f2c,010f2a,01122a,011428,011626,021825,021a24,021d22,032020,04221f,06221c,07221a,062119,062017,061f16,051d15,041b13,041a13,041911,05190f,041b0e,041c0d,041b0e,04190f,04160f,03140d,03120a,021107,021005,031004,031004,031003,031003,031003,020f03,020f03,021002,031003,051103,051203,061204,061305,061405,061606,051707,051609,05150a,04140b,03120a">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/video-home.mp4"
-               poster="images/poster/video-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/video-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          <p class="hs-kicker">What I want</p>
+          <h2 class="hs-title">Stop, look closer, remember.</h2>
+          <p class="hs-text">I want my work to make people stop, look closer and remember the idea behind it.</p>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="ab3916,ab3816,ab3816,ab3816,ab3816,ab3816,ab3815,aa3715,ab3715,aa3715,ab3716,ab3716,ab3715,ab3715,ab3815,ab3815,ab3815,ac3815,ab3916,ab3916,ab3915,ab3a16,aa3915,aa3a16,aa3a16,aa3a16,aa3a16,aa3a16,aa3b16,aa3a16,aa3a16,aa3a15,aa3a16,a93a16,a93a16,aa3a16,a93a15,aa3a15,aa3a15,aa3a15,aa3915,aa3915,aa3916,aa3815,ab3915,ab3815,ac3915,ac3915,ad3a15,ad3b16,ac3a15,ac3b15,ad3b15,ad3b15,ac3a15,ad3a15,ad3a15,ad3a15,ad3a15,ad3a15,ae3b16,ad3a15,ae3b15,ae3b15,ae3b17,ae3a16,ae3a16,ad3a16">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/canyon-home.mp4"
-               poster="images/poster/canyon-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/canyon-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          <p class="hs-kicker">Research</p>
+          <h2 class="hs-title">gives the visual a reason to exist.</h2>
+          <p class="hs-text">Research is an important part of my process: it helps me develop concepts that go beyond obvious solutions. I enjoy combining photography, 3D and experience design to create stronger, more memorable outcomes.</p>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="757575,747474,767676,777777,787878,787878,797979,797979,6f6f6f,6e6e6e,717171,707070,757575,757575,757575,767676,787878,787878,797979,797979,787878,767676,727272,6f6f6f,6c6c6c,6b6b6b,6a6a6a,696969,686868,646464,626262,616161,5f5f5f,636363,676767,686868,606060,595959,4f4f4f,565656,5c5c5c,585858,535353,545454,555555,575757,5b5b5b,5c5c5c,616161,616161,5e5e5e,5d5d5d,5c5c5c,5f5f5f,606060,616161,636363,656565,666666,686868,686868,6a6a6a,6e6e6e,757575,757575,747474,727272,717171,6b6b6b,696969,646464,656565">
         <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/mono-home.mp4"
-               poster="images/poster/mono-home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/mono-home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          <p class="hs-kicker">Point of view</p>
+          <h2 class="hs-title">Not one fixed style.</h2>
+          <p class="hs-text">I am not interested in one fixed style, but in building a recognisable point of view. My long-term ambition is to become an Art Director, leading projects where concept, visual direction and experimentation matter equally.</p>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="505050,505050,505050,525252,525252,505050,505050,505050,505050,505050,505050,505050,505050,505050,505050,4f4f4f,505050,505050,505050,525252,525252,535353,525252,505050,505050,4f4f4f,4f4f4f,4f4f4f,4f4f4f,4f4f4f,4d4d4d,4d4d4d,4d4d4d,4d4d4d,4e4e4e,4f4f4f,505050,525252,525252,535353,545454,535353,535353,555555,585858,5a5a5a,5b5b5b,5b5b5b,5a5a5a,5a5a5a,5a5a5a,585858,575757,575757,565656,565656,565656,565656,565656,565656,565656,555555,535353,525252,505050,505050,505050,505050,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4f4f4f,4e4e4e,4d4d4d,4d4d4d,4e4e4e,4d4d4d,4d4d4d,4e4e4e,4d4d4d,4d4d4d,4d4d4d,4e4e4e,4e4e4e,4e4e4e,4f4f4f,505050,4f4f4f,505050,4f4f4f,4f4f4f,4f4f4f,4f4f4f,4e4e4e,4f4f4f,4f4f4f,505050,4f4f4f,4f4f4f,505050,505050,505050,505050,505050,505050,525252,525252,525252,525252,525252,525252,525252,525252,525252,525252,525252,525252,505050,505050,505050,4f4f4f,4e4e4e,4e4e4e,4e4e4e,4e4e4e,4f4f4f,4e4e4e,4e4e4e,4d4d4d,4d4d4d,4e4e4e,525252">
         <video class="home-video home-video-mono" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/c-works.mp4"
-               poster="images/poster/c-works.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/c-works.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          <p class="hs-kicker">Education</p>
+          <h2 class="hs-title">Learning</h2>
+          <ul class="hs-list">
+            <li><b>RMIT University</b> &mdash; Bachelor of Communication Design, 2023 &ndash; 2027</li>
+            <li><b>Digiart Academy</b> &mdash; 2D and 3D Graphic Design, 2022 &ndash; 2023</li>
+          </ul>
+        </div>
       </div>
-      <div class="home-slide">
+      <div class="home-slide" data-tones="5c5c5c,5f5f5f,606061,616161,616161,5f5f60,5e5e5f,5c5c5c,59595a,5a5a5a,5c5c5c,5d5d5d,5c5c5d,5b5b5b,5b5b5b,5a5a5a,545454,575758,5b5b5b,595959,585859,575758,555555,4c4c4d,5a5a5a,5b5b5b,5d5d5e,5e5e5f,5b5b5b,5a5a5a,585858,565656,565656,545454,525252,515151,4f4f4f,4f4f4f,4f4e4f,4f4f50,515151,525252,535353,585858,575758,585858,5e5e5e,646465,676767,6e6e6e,747474,727272,6f6f70,6e6e6f,6d6d6d,6c6c6d">
         <video class="home-video" src="https://github.com/bachbinh04/tantamtrang/releases/download/media/home-new.mp4"
-               poster="images/poster/home.jpg" muted loop playsinline preload="none"></video>
+               poster="images/poster/home.jpg" muted loop playsinline preload="none" aria-hidden="true"></video>
+        <div class="hs-copy">
+          <p class="hs-kicker">Experience</p>
+          <h2 class="hs-title">Selected projects</h2>
+          <ul class="hs-list">
+            <li><b>Bakery Website Design</b> &mdash; Web / UI</li>
+            <li><b>Father&rsquo;s Pizza Rebrand</b> &mdash; Brand identity</li>
+            <li><b>Sportsgirl Promotional Graphics</b> &mdash; Campaign graphics</li>
+            <li><b>Photography Folio</b> &mdash; Photography</li>
+            <li><b>Playing Card Design</b> &mdash; Illustration</li>
+          </ul>
+          <div class="about-cv hs-cv">
+            <a href="images/CV.png" class="cv-btn cv-view" aria-haspopup="dialog" aria-controls="cvLb">VIEW CV &nearr;</a>
+            <a href="images/CV.png" class="cv-btn cv-download" download="TanTamTrang-CV.png">DOWNLOAD CV &darr;</a>
+          </div>
+        </div>
       </div>
     </div>
     <div class="home-reel-spacer" id="homeReelSpacer" aria-hidden="true"></div>
   </main>
 
+  <!-- The CV viewer VIEW CV opens (script.js). The picture is only fetched once
+       the reader shows interest in the button. -->
+  <div class="cv-lb" id="cvLb" role="dialog" aria-modal="true" aria-label="CV" aria-hidden="true">
+    <div class="cv-lb-scroll">
+      <div class="cv-lb-frame">
+        <img alt="Dao Trong Tan - resume" width="1920" height="2716" decoding="async">
+      </div>
+    </div>
+    <button class="photo-lb-close cv-lb-close" id="cvLbClose" type="button" aria-label="Close CV">&times;</button>
+  </div>
+
   <!-- Library for the intro -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-  <script src="script.js?v=170"></script>
+  <script src="script.js?v=172"></script>
 </body>
 
 </html>

@@ -712,6 +712,75 @@ if (aboutPage) {
 
 
 /* =========================================================
+   HOME — TEXT TONES
+   The words over each clip take their colour from the clip, moment by
+   moment. A page cannot read the pixels of a video served from another
+   site that does not allow it (the release host does not), so each clip's
+   average colour behind the words was measured beforehand, four times a
+   second, and sits on its slide as data-tones. Here the one for the
+   clip's current moment becomes: light words on a dark moment, dark on a
+   light one, both tinted with the clip's own hue, and the small line
+   above them in its complement. A grey clip gets plain white or black.
+   ========================================================= */
+(function () {
+  const slides = [...document.querySelectorAll('#homeReel .home-slide[data-tones]')];
+  if (!slides.length) return;
+  const RATE = 4;   // samples a second in data-tones
+
+  const rgb = (hex) => [0, 2, 4].map((i) => parseInt(hex.substr(i, 2), 16) / 255);
+  function hueSat(r, g, b) {
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (!d) return [0, 0];
+    const l = (max + min) / 2;
+    const s = d / (1 - Math.abs(2 * l - 1));
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [Math.round((h * 60 + 360) % 360), s];
+  }
+  function paint(slide, [r, g, b]) {
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const [h, sat] = hueSat(r, g, b);
+    const grey = sat < 0.04;
+    // an average over a stretch of picture is far greyer than the picture
+    // looks, so its saturation is pushed back up before it is used
+    const tint = grey ? 0 : Math.round(Math.min(sat * 2.6, 0.85) * 100);
+    const comp = (h + 180) % 360;
+    let ink, accent, glow;
+    if (lum < 0.5) {
+      ink = 'hsl(' + h + ', ' + tint + '%, 84%)';
+      accent = grey ? ink : 'hsl(' + comp + ', 85%, 72%)';
+      glow = '0 1px 16px rgba(0,0,0,.45)';
+    } else {
+      ink = 'hsl(' + h + ', ' + tint + '%, 14%)';
+      accent = grey ? ink : 'hsl(' + comp + ', 80%, 26%)';
+      glow = '0 1px 16px rgba(255,255,255,.35)';
+    }
+    slide.style.setProperty('--hs-ink', ink);
+    slide.style.setProperty('--hs-accent', accent);
+    slide.style.setProperty('--hs-glow', glow);
+    slide.style.setProperty('--hs-on-ink', lum < 0.5 ? '#050505' : '#f4f4f2');
+  }
+
+  slides.forEach((s) => {
+    s._tones = s.dataset.tones.split(',').map(rgb);
+    s._toneAt = -1;
+  });
+  function tick() {
+    if (document.hidden) return;
+    slides.forEach((s) => {
+      const v = s.querySelector('video');
+      const t = v && isFinite(v.currentTime) ? v.currentTime : 0;
+      const i = Math.floor(t * RATE) % s._tones.length;
+      if (i === s._toneAt) return;
+      s._toneAt = i;
+      paint(s, s._tones[i]);
+    });
+  }
+  tick();
+  setInterval(tick, 125);
+})();
+
+
+/* =========================================================
    RELEASE CLIPS — which size, and a fresh link when one runs out
    Every clip on the site is a GitHub release asset in two sizes: the
    1080p file under its own name and a 720p copy named -720.mp4, about
@@ -1702,7 +1771,12 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: 'Twelve months',       years: '2024 — 2026', tags: ['Days', 'Grids', 'Seasons'] },
     { name: 'Digital Art',      role: 'Drawing / Vector', img: 'images/digital-art-01.png', caption: 'Digital Art', link: 'digital-art.html',
       bg: 'images/digital-art-05.png',        bgPos: '18% 50%',
-      desc: 'Drawn and vectored',  years: '2024 — 2026', tags: ['Pixels', 'Brushes', 'Worlds'] }
+      desc: 'Drawn and vectored',  years: '2024 — 2026', tags: ['Pixels', 'Brushes', 'Worlds'] },
+    // No pictures yet: these two stay plain frames until their work is added.
+    { name: 'Card Design',      role: 'Print',            img: '',                          caption: 'Card Design', link: 'card-design.html',
+      desc: 'Cards in the hand',   years: '2024 — 2026', tags: ['Paper', 'Edges', 'Details'] },
+    { name: 'Packaging Design', role: 'Print / Form',     img: '',                          caption: 'Packaging Design', link: 'packaging-design.html',
+      desc: 'Boxes and wrappers',  years: '2024 — 2026', tags: ['Forms', 'Labels', 'Shelves'] }
   ];
   const N = WORKS.length;
   const totalWorks = N;
